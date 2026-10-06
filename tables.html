@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICON-MOS Runs</title>
+<style>
+:root{--bg:#f4f5f7;--panel:#fff;--ink:#1c2230;--muted:#5b6474;--line:#dde1e7;--acc:#1f5fbf;--acc-ink:#fff;--hi:#eaf1fc;--ok:#1e7f43;--warn:#a15c00;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--panel:#1d2128;--ink:#e6e9ee;--muted:#9aa3b2;--line:#2e343e;--acc:#5b9cf5;--acc-ink:#0b1220;--hi:#232b38;--ok:#5cc98a;--warn:#e0a54a;--bad:#f07a6e}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0 8px 0 0;letter-spacing:.3px}
+header h1 span{color:var(--muted);font-weight:500;font-size:13px;margin-left:6px}
+select,button,input{font:inherit;color:inherit}
+select,input[type=date]{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tabs button,.ctrl button,.btn{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 12px;cursor:pointer}
+.btn.primary{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.btn:disabled{opacity:.5;cursor:default}
+.tabs button.on,.prod.on,.hrs button.on,.seg button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.busy{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:6px;animation:pulse 1s infinite alternate}
+@keyframes pulse{from{opacity:.3}to{opacity:1}}
+main{padding:14px 16px}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+.ctrl .lbl{font-variant-numeric:tabular-nums;color:var(--muted)}
+.tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+#tbl{min-width:640px}
+th,td{padding:4px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600}
+#tbl td:first-child,#tbl th:first-child,#tbl td:nth-child(2),#tbl th:nth-child(2){text-align:left}
+td.m{font-weight:700}
+tr.day td{border-top:2px solid var(--line)}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;font-size:12px}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+/* new-run panel */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--panel);border-left:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.18);z-index:20;display:flex;flex-direction:column}
+.drawer .hd{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.drawer .hd h2{font-size:16px;margin:0;flex:1}
+.drawer .bd{padding:12px 16px;overflow:auto;flex:1}
+.drawer h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:16px 0 8px}
+.drawer h3:first-child{margin-top:0}
+.seg{display:flex;gap:0;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:var(--panel);padding:6px 12px;cursor:pointer;margin-left:-1px}
+.seg button:first-child{border-radius:6px 0 0 6px;margin-left:0}.seg button:last-child{border-radius:0 6px 6px 0}
+.small{font-size:12px;color:var(--muted)}
+.cyc{width:100%;font-size:13px}
+.cyc td,.cyc th{text-align:left;padding:5px 6px}
+.cyc td:last-child,.cyc th:last-child{text-align:right}
+.tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:10px;padding:0 7px;margin:0 3px 2px 0;white-space:nowrap}
+.tag.ok{color:var(--ok);border-color:currentColor}.tag.warn{color:var(--warn);border-color:currentColor}.tag.bad{color:var(--bad);border-color:currentColor}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.job{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.job .top{display:flex;gap:8px;align-items:center}
+.job .top b{flex:1}
+.job pre{margin:6px 0 0;max-height:160px;padding:6px 8px;font-size:11px;white-space:pre-wrap}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;z-index:30;font-size:13px}
+</style></head>
+<body>
+<header>
+  <h1>ICON-MOS<span id="dom"></span></h1>
+  <label>Run <select id="run"></select></label>
+  <button class="btn" id="newrun" hidden title="Process another ICON cycle"><span class="busy" id="busydot" hidden></span>New run…</button>
+  <a class="btn" href="index.html" style="text-decoration:none">Map</a>
+  <div class="tabs"><button data-t="table" class="on">Station forecasts</button><button data-t="about">Model</button></div>
+</header>
+<main>
+  <section id="table">
+    <div class="ctrl"><label>Station <select id="sta"></select></label><span class="lbl" id="stinfo"></span></div>
+    <div class="tablewrap"><table id="tbl"></table></div>
+  </section>
+  <section id="about" hidden><pre id="model"></pre></section>
+</main>
+<aside class="drawer" id="drawer" hidden>
+  <div class="hd"><h2>Process an ICON run</h2><button class="btn" id="dclose">Close</button></div>
+  <div class="bd">
+    <h3>Output resolution</h3>
+    <div class="seg" id="res">
+      <button data-r="13km">13 km · ICON native</button><button data-r="2.5km">2.5 km · RTMA</button><button data-r="0.5km">0.5 km</button><button data-r="0.25km">0.25 km</button><button data-r="0.1km">0.1 km</button>
+    </div>
+    <p class="small" id="resinfo"></p>
+    <h3>Recent cycles</h3>
+    <div class="row" style="margin-bottom:8px"><button class="btn primary" id="runlatest">Run newest on DWD</button><button class="btn" id="cycrefresh">Refresh list</button></div>
+    <table class="cyc"><thead><tr><th>Cycle</th><th>Available from</th><th>Done at</th><th></th></tr></thead><tbody id="cycles"><tr><td colspan="4" class="small">Checking…</td></tr></tbody></table>
+    <h3>Older cycle</h3>
+    <div class="row">
+      <input type="date" id="odate"><select id="ohour"><option>00</option><option>06</option><option selected>12</option><option>18</option></select><span class="small">Z</span>
+      <button class="btn" id="ocheck">Check</button><button class="btn primary" id="orun">Run</button>
+    </div>
+    <p class="small" id="ostatus">Any cycle from the Open-Meteo archive (from <span id="astart"></span>). The MOS is trained only on data from before the run.</p>
+    <h3>Jobs</h3>
+    <div id="jobs"><p class="small">No jobs yet.</p></div>
+  </div>
+</aside>
+<script src="runs.js?v=202610062255"></script>
+<script>
+(function(){
+let M = window.ICONMOS;
+const $=id=>document.getElementById(id);
+const store=(k,v)=>{try{localStorage.setItem('iconmos.'+k,v)}catch(e){}};
+const recall=k=>{try{return localStorage.getItem('iconmos.'+k)}catch(e){return null}};
+const st={run:null};
+const RES={'13km':'13 km (ICON)','2.5km':'2.5 km','0.5km':'0.5 km','0.25km':'0.25 km','0.1km':'0.1 km'};
+const hasRuns=()=>M&&M.runs&&M.runs.length;
+if(M)$('dom').textContent=' — '+M.domain+(M.static?' · updated '+M.generated:'');
+function run(){return M.runs.find(r=>r.id===st.run)}
+function fillRuns(){
+  const sel=$('run'); sel.innerHTML='';
+  M.runs.forEach((r,i)=>sel.add(new Option(r.label+(r.source==='aws'?'  (archive)':''),r.id)));
+  if(st.run&&M.runs.some(r=>r.id===st.run))sel.value=st.run;
+}
+function selectRun(id){
+  st.run=id; $('run').value=id; store('maprun',id);    // the map opens on the same run
+  $('model').textContent=run().model||'';
+  if(!$('table').hidden)loadStations();
+}
+
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  ['table','about'].forEach(t=>$(t).hidden=t!==b.dataset.t);
+  if(b.dataset.t==='table')loadStations();
+});
+// ---- station table
+function loadStations(){
+  const id=st.run;
+  if(window.ICONMOS_ST&&window.ICONMOS_ST[id])return drawStations();
+  const s=document.createElement('script');s.src='runs/'+id+'/stations.js?v='+(run().stamp||0);s.onload=drawStations;document.body.appendChild(s);
+}
+function drawStations(){
+  const D=window.ICONMOS_ST[st.run]; const sel=$('sta'); const prev=sel.value||recall('sta');
+  const ids=Object.keys(D.stations).sort((a,b)=>D.stations[a].name.localeCompare(D.stations[b].name));
+  sel.innerHTML=''; ids.forEach(i=>sel.add(new Option(D.stations[i].name+' ('+i+')',i)));
+  if(prev&&D.stations[prev])sel.value=prev;
+  sel.onchange=()=>{store('sta',sel.value);drawTable();}; drawTable();
+}
+function drawTable(){
+  const D=window.ICONMOS_ST[st.run], id=$('sta').value, s=D.stations[id];
+  const met=M.units==='metric', T=met?'°C':'°F', W=met?'m/s':'mph', P=met?'mm':'in', SN=met?'cm':'in';
+  $('stinfo').textContent=s.lat+', '+s.lon;
+  const f=x=>x==null?'–':Math.round(x);
+  const g=(k,i)=>s[k]?s[k][i]:null;
+  const ext=!!s.wdir;   // runs made before these columns existed don't have them
+  const compass=d=>['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
+  const per=(k,i)=>{const a=g(k,i),b=i?g(k,i-1):a;return a==null||b==null?null:Math.max(a-b,0)};
+  const amt=(x,dec)=>x==null||x<0.5*Math.pow(10,-dec)?'':x.toFixed(dec);
+  const PT={1:'Rain',2:'Snow',3:'Mix',4:'Frz rain'};
+  const step=D.valid.length>1?Math.round((new Date(D.valid[1])-new Date(D.valid[0]))/36e5):3;
+  let h='<tr><th>Valid (local)</th><th>UTC</th><th>Temp MOS ('+T+')</th><th>Temp ICON</th><th>Dewpt MOS</th><th>Dewpt ICON</th>'+
+    '<th>Wind MOS ('+W+')</th><th>Wind ICON</th>'+
+    (ext?'<th>Wind chill</th><th>Sky MOS (%)</th><th>Sky ICON</th><th>Precip '+step+'h MOS ('+P+')</th><th>Precip ICON</th>'+
+      '<th>Type</th><th>Snow '+step+'h ('+SN+')</th><th>Precip total MOS</th>':'')+'</tr>';
+  let lastDay='';
+  D.valid.forEach((v,i)=>{const d=new Date(v); let loc=v, day='';
+    try{loc=d.toLocaleString('en-US',{timeZone:M.tz,weekday:'short',month:'short',day:'numeric',hour:'numeric'});day=d.toLocaleDateString('en-US',{timeZone:M.tz});}catch(e){}
+    const t=g('mos_t2m',i), wc=g('mos_wchill',i), dir=g('wdir',i), spd=g('mos_wspd10m',i);
+    h+='<tr'+(day!==lastDay&&i?' class="day"':'')+'><td>'+loc+'</td><td>'+v.slice(11,16)+'Z</td>'+
+      '<td class="m">'+f(t)+'</td><td>'+f(g('raw_t2m',i))+'</td><td class="m">'+f(g('mos_td2m',i))+'</td><td>'+f(g('raw_td2m',i))+
+      '</td><td class="m">'+(dir!=null&&Math.round(spd)>0?compass(dir)+' ':'')+f(spd)+'</td><td>'+f(g('raw_wspd10m',i))+'</td>'+
+      (ext?'<td>'+(wc!=null&&Math.round(wc)<Math.round(t)?f(wc):'')+'</td><td class="m">'+f(g('mos_clct',i))+'</td><td>'+f(g('raw_clct',i))+
+        '</td><td class="m">'+amt(per('mos_qpf',i),met?1:2)+'</td><td>'+amt(per('raw_qpf',i),met?1:2)+
+        '</td><td>'+(PT[g('ptype',i)]||'')+'</td><td>'+amt(per('snowfall',i),1)+'</td><td>'+amt(g('mos_qpf',i),met?1:2)+'</td>':'')+
+      '</tr>'; lastDay=day;});
+  $('tbl').innerHTML=h;
+}
+$('run').onchange=()=>selectRun($('run').value);
+
+function start(){
+  if(!hasRuns()){$('table').hidden=true;
+    $('table').insertAdjacentHTML('beforebegin','<div class="empty" id="norun">No runs yet. Run <code>mos.bat run</code>'+
+      (location.protocol.startsWith('http')&&!M.static?', or use <b>New run…</b> above.':'.')+'</div>');return;}
+  const nr=$('norun'); if(nr){nr.remove();$('table').hidden=false;}
+  fillRuns(); const want=recall('maprun');
+  selectRun(M.runs.some(r=>r.id===want)?want:M.runs[0].id);
+}
+start();
+
+// ---- new runs (only when served by `mos.bat view`, which can start runs)
+const api=(path,body)=>fetch('api/'+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})
+  .then(r=>r.json().then(j=>{if(!r.ok)throw new Error(j.error||r.statusText);return j}));
+const R={res:recall('res')||'2.5km',info:null,known:{},poll:null,seen:{}};
+const fmtInit=id=>{const d=new Date(Date.UTC(+id.slice(0,4),+id.slice(4,6)-1,+id.slice(6,8),+id.slice(8,10)));
+  return id.slice(8,10)+'Z '+d.toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'})};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),5000)}
+function drawRes(){
+  $('res').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===R.res));
+  $('resinfo').textContent=(R.info&&R.info.res_help[R.res])||'';
+}
+$('res').querySelectorAll('button').forEach(b=>b.onclick=()=>{R.res=b.dataset.r;store('res',R.res);drawRes();loadCycles(false);});
+function srcTags(c){
+  const src=[]; if(c.cached)src.push('<span class="tag ok">on disk</span>');
+  if(c.dwd)src.push('<span class="tag ok">DWD</span>'); if(c.aws)src.push('<span class="tag ok">archive</span>');
+  if(!src.length)src.push(c.pending?'<span class="tag warn">not out yet</span>':'<span class="tag bad">unavailable</span>');
+  return src.join('');
+}
+function cycleRow(c){
+  const done=c.done.map(r=>'<span class="tag">'+esc(RES[r]||r)+'</span>').join('')||'<span class="small">–</span>';
+  const can=c.cached||c.dwd||c.aws, again=c.done.includes(R.res);
+  return '<tr><td>'+fmtInit(c.id)+'</td><td>'+srcTags(c)+'</td><td>'+done+'</td><td><button class="btn'+(again?'':' primary')+'" data-init="'+c.id+'"'+(can?'':' disabled')+'>'+(again?'Redo':'Run')+'</button></td></tr>';
+}
+function loadCycles(fresh){
+  if(fresh)$('cycles').innerHTML='<tr><td colspan="4" class="small">Checking DWD and the archive…</td></tr>';
+  api('cycles'+(fresh?'?fresh=1':'')).then(j=>{
+    $('cycles').innerHTML=j.cycles.map(cycleRow).join('');
+    $('cycles').querySelectorAll('button[data-init]').forEach(b=>b.onclick=()=>submit(b.dataset.init));
+  }).catch(e=>{$('cycles').innerHTML='<tr><td colspan="4" class="small">Could not check: '+esc(e.message)+'</td></tr>'});
+}
+function submit(init){
+  api('run',{init:init,res:R.res}).then(j=>{toast('Queued '+(init?fmtInit(init):'newest run')+' at '+RES[R.res]);pollJobs();})
+    .catch(e=>toast('Could not start: '+e.message));
+}
+$('runlatest').onclick=()=>submit(null);
+$('cycrefresh').onclick=()=>loadCycles(true);
+const oinit=()=>$('odate').value?$('odate').value.replace(/-/g,'')+$('ohour').value:null;
+$('ocheck').onclick=()=>{const i=oinit();if(!i)return;$('ostatus').textContent='Checking '+fmtInit(i)+'…';
+  api('cycles?date='+$('odate').value).then(j=>{const c=j.cycles.find(x=>x.id===i);
+    $('ostatus').innerHTML=c?fmtInit(i)+': '+srcTags(c)+(c.done.length?' · already done at '+c.done.map(r=>esc(RES[r]||r)).join(', '):''):'Not found';}).catch(e=>$('ostatus').textContent=e.message)};
+$('orun').onclick=()=>{const i=oinit();if(i)submit(i);else toast('Pick a date first')};
+function drawJobs(jobs){
+  const active=jobs.some(j=>j.state==='running'||j.state==='queued');
+  $('busydot').hidden=!active;
+  if(!jobs.length){$('jobs').innerHTML='<p class="small">No jobs yet.</p>';return active}
+  const cls={running:'warn',queued:'',done:'ok',failed:'bad',cancelled:''};
+  $('jobs').innerHTML=jobs.slice().reverse().map(j=>{
+    const el=j.started?Math.round(((j.finished?new Date(j.finished):new Date())-new Date(j.started))/1000):0;
+    return '<div class="job"><div class="top"><b>'+(j.init?fmtInit(j.init):'Newest run')+' · '+esc(RES[j.res]||j.res)+'</b>'+
+      '<span class="tag '+cls[j.state]+'">'+j.state+(el?' '+Math.floor(el/60)+'m '+String(el%60).padStart(2,'0')+'s':'')+'</span>'+
+      (j.state==='done'&&j.run_id?'<button class="btn" data-view="'+esc(j.run_id)+'">View</button>':'')+
+      (j.state==='running'||j.state==='queued'?'<button class="btn" data-cancel="'+j.id+'">Cancel</button>':'')+'</div>'+
+      (j.log.length?'<pre>'+esc(j.log.slice(-12).join('\n'))+'</pre>':'')+'</div>';}).join('');
+  $('jobs').querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>api('cancel',{id:+b.dataset.cancel}).then(pollJobs));
+  $('jobs').querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{if(M.runs.some(r=>r.id===b.dataset.view)){$('drawer').hidden=true;selectRun(b.dataset.view);}});
+  return active;
+}
+function reloadRuns(then){
+  const s=document.createElement('script');s.src='runs.js?t='+Date.now();
+  s.onload=()=>{M=window.ICONMOS;s.remove();then&&then()};document.body.appendChild(s);
+}
+function pollJobs(){
+  clearTimeout(R.poll);
+  api('jobs').then(j=>{
+    const active=drawJobs(j.jobs);
+    const fin=j.jobs.filter(x=>x.state==='done'&&!R.seen[x.id]);
+    j.jobs.forEach(x=>{if(x.state!=='running'&&x.state!=='queued')R.seen[x.id]=true});
+    if(fin.length&&R.started){reloadRuns(()=>{const last=fin[fin.length-1];
+      if(!st.run){start();}else{fillRuns();}
+      if(last.run_id&&M.runs.some(r=>r.id===last.run_id)){selectRun(last.run_id);toast('Run ready: '+run().label);}
+      if(!$('drawer').hidden)loadCycles(false);});}
+    R.started=true;
+    if(active||!$('drawer').hidden)R.poll=setTimeout(pollJobs,active?2000:8000);
+  }).catch(()=>{R.poll=setTimeout(pollJobs,10000)});
+}
+$('newrun').onclick=()=>{$('drawer').hidden=false;loadCycles(false);pollJobs();};
+$('dclose').onclick=()=>{$('drawer').hidden=true;};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').hidden)$('drawer').hidden=true;});
+if(location.protocol.startsWith('http')&&!(M&&M.static))api('status').then(j=>{   // the published copy can't start runs
+  R.info=j; if(!j.resolutions.includes(R.res))R.res=j.default_res;
+  $('newrun').hidden=false; $('astart').textContent=j.archive_start;
+  $('odate').min=j.archive_start; $('odate').max=new Date().toISOString().slice(0,10);
+  drawRes(); pollJobs();
+}).catch(()=>{});
+})();
+</script>
+</body></html>

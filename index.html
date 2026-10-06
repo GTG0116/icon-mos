@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICON-MOS Map</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<style>
+:root{--bg:#f4f5f7;--panel:#fff;--ink:#1c2230;--muted:#5b6474;--line:#dde1e7;--acc:#1f5fbf;--acc-ink:#fff;--hi:#eaf1fc}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--panel:#1d2128;--ink:#e6e9ee;--muted:#9aa3b2;--line:#2e343e;--acc:#5b9cf5;--acc-ink:#0b1220;--hi:#232b38}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0 8px 0 0;letter-spacing:.3px}
+header h1 span{color:var(--muted);font-weight:500;font-size:13px;margin-left:6px}
+header a{margin-left:auto;color:var(--acc);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:5px 12px}
+select,button,input{font:inherit;color:inherit}
+select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.wrap{flex:1;display:grid;grid-template-columns:272px 1fr;min-height:0}
+@media (max-width:760px){.wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr}.side{max-height:40vh;border-right:0;border-bottom:1px solid var(--line)}}
+/* ---- sidebar: cards with grouped data options, switches and sliders */
+.side{background:var(--bg);border-right:1px solid var(--line);padding:12px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.card-h{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:650;letter-spacing:.2px;margin:0 0 10px}
+.card-h svg{width:16px;height:16px;flex:none;color:var(--acc)}
+.card-h .grow{flex:1}
+.grp{margin-top:10px}
+.grp:first-child{margin-top:0}
+.grp-h{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:0 2px 5px}
+.prods{display:flex;flex-direction:column;gap:2px}
+.prod{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:13.5px;position:relative;transition:background .12s}
+.prod:hover:not(.on){background:var(--hi)}
+.prod .sw{width:26px;height:10px;border-radius:5px;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.prod.on{background:var(--hi);color:var(--acc);font-weight:600}
+.prod.on::before{content:"";position:absolute;left:-12px;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--acc)}
+.prod:focus-visible,.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.ctl{display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:13px}
+.ctl>span:first-child{flex:1}
+.ctl .val{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;min-width:44px;text-align:right}
+.slider{display:block;padding:4px 2px 6px;font-size:13px}
+.slider .top{display:flex;justify-content:space-between;margin-bottom:4px}
+.slider .top .val{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--line);outline:none;margin:6px 0}
+input[type=range].rng::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--panel);border:2px solid var(--acc);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+input[type=range].rng::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--panel);border:2px solid var(--acc);cursor:pointer}
+input[type=range].rng::-moz-range-progress{background:var(--acc);height:4px;border-radius:2px}
+.tg{-webkit-appearance:none;appearance:none;width:32px;height:18px;border-radius:9px;background:var(--line);position:relative;cursor:pointer;flex:none;transition:background .15s;margin:0}
+.tg::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s}
+.tg:checked{background:var(--acc)}
+.tg:checked::after{transform:translateX(14px)}
+.tg:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.seg button{flex:1;border:0;background:none;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15);font-weight:600}
+.dim{opacity:.45;pointer-events:none}
+.side select,.side input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-size:13px}
+.side input[type=number]{width:72px}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px}
+.btn:hover:not(:disabled){background:var(--hi)}
+.btn.primary{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08);background:var(--acc)}
+.btn:disabled{opacity:.5;cursor:default}
+#cap_msg{color:var(--muted);font-size:12px;min-height:1.4em;padding:2px}
+.hint{color:var(--muted);font-size:12px;margin:0 4px;line-height:1.5}
+#particles{position:absolute;inset:0;z-index:1;pointer-events:none}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+#map{flex:1;min-height:300px;position:relative}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+.bar button{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 12px;cursor:pointer}
+.bar input[type=range]{flex:1;min-width:160px;accent-color:var(--acc)}
+.bar .lbl{font-variant-numeric:tabular-nums;min-width:250px;color:var(--muted)}
+.box{position:absolute;z-index:2;background:rgba(255,255,255,.93);color:#1c2230;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:12px}
+#legend{left:10px;bottom:28px;padding:6px 10px 4px}
+#legend .t{font-weight:600;margin-bottom:3px}
+#readout{left:10px;top:10px;padding:5px 9px;font-variant-numeric:tabular-nums;min-width:120px}
+#readout b{font-size:15px}
+#loading{right:50px;top:10px;padding:4px 9px}
+#shield{position:absolute;inset:0;z-index:5;cursor:progress}
+#fc{left:50%;top:10px;transform:translateX(-50%);z-index:3;padding:9px 12px 8px;max-width:calc(100% - 20px);max-height:calc(100% - 20px);overflow:auto;background:rgba(255,255,255,.97)}
+#fc .hd{display:flex;gap:8px;align-items:flex-start}
+#fc .hd b{font-size:14px}
+#fc .sub{color:#5b6474}
+#fc .x{margin-left:auto;border:0;background:none;font-size:20px;line-height:16px;cursor:pointer;color:#5b6474;padding:0 2px}
+#fc .x:hover{color:#1c2230}
+#fc .now{color:#1c2230;margin:3px 0 6px;font-variant-numeric:tabular-nums}
+#fc .sc{overflow-x:auto}
+#fc .days{display:grid;grid-auto-flow:column;grid-auto-columns:96px}
+#fc .day{text-align:center;padding:2px 3px 6px;border-left:1px solid #e6e8ec}
+#fc .day:first-child{border-left:0}
+#fc .dn{font-weight:600;font-size:13px}
+#fc .dd{color:#5b6474;font-size:11px}
+#fc .day svg{display:block;margin:2px auto 0}
+#fc .cond{min-height:30px;line-height:1.2;margin:1px 0 3px;display:flex;align-items:center;justify-content:center}
+#fc .hl{font-size:16px;font-variant-numeric:tabular-nums;margin-bottom:2px}
+#fc .hi{color:#c62828;font-weight:700}
+#fc .lo{color:#1f5fbf;font-weight:600}
+#fc .row{font-variant-numeric:tabular-nums;line-height:1.45}
+#fc .k{color:#5b6474}
+#fc .chart{display:block;cursor:pointer;margin-top:2px}
+#fc .key{color:#5b6474;font-size:11px;margin-top:3px}
+#fc .key i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin:0 3px 0 8px}
+#fc .key i:first-child{margin-left:0}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+</style></head>
+<body>
+<header>
+  <h1>ICON-MOS<span id="dom"></span></h1>
+  <label>Run <select id="run"></select></label>
+  <a href="tables.html">Runs &amp; station tables</a>
+</header>
+<div class="wrap">
+  <aside class="side">
+    <section class="card">
+      <div class="card-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 16 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>Data</div>
+      <div id="prods"></div>
+    </section>
+    <section class="card" id="windcard" hidden>
+      <div class="card-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h15a3 3 0 1 1-3 3"/><path d="M3 16h7"/></svg><span class="grow">Wind particles</span>
+        <input type="checkbox" class="tg" id="p_on" checked aria-label="Show wind particles"></div>
+      <div id="p_opts">
+        <label class="slider"><div class="top"><span>Speed</span><span class="val" id="p_speed_v"></span></div>
+          <input type="range" class="rng" id="p_speed" min="0.25" max="4" step="0.25" value="1"></label>
+        <label class="slider"><div class="top"><span>Density</span><span class="val" id="p_dens_v"></span></div>
+          <input type="range" class="rng" id="p_dens" min="1" max="40" step="1" value="8"></label>
+        <label class="slider"><div class="top"><span>Trail length</span><span class="val" id="p_trail_v"></span></div>
+          <input type="range" class="rng" id="p_trail" min="0" max="1" step="0.05" value="0.6"></label>
+        <div class="ctl"><span>Color</span><div class="seg" id="p_col"><button data-v="dark" class="on">Dark</button><button data-v="light">Light</button></div></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Map layers</div>
+      <label class="ctl"><span>Values at cities</span><input type="checkbox" class="tg" id="o_vals" checked></label>
+      <label class="ctl"><span>Roads</span><input type="checkbox" class="tg" id="o_roads" checked></label>
+      <label class="ctl"><span>County lines</span><input type="checkbox" class="tg" id="o_cnty" checked></label>
+      <label class="ctl" title="Isobars on the pressure map, 500 mb heights on the 500 mb maps"><span>Isobars &amp; heights</span><input type="checkbox" class="tg" id="o_cont" checked></label>
+      <label class="slider"><div class="top"><span>Data opacity</span><span class="val" id="o_op_v"></span></div>
+        <input type="range" class="rng" id="o_op" min="0.3" max="1" step="0.05" value="0.85"></label>
+    </section>
+    <section class="card">
+      <div class="card-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Capture</div>
+      <div class="ctl"><button class="btn" id="shot" title="This frame as a PNG, with the valid time, model run and legend" style="width:100%">Screenshot</button></div>
+      <label class="ctl"><span>From</span><select id="cap_a"></select> to <select id="cap_b"></select></label>
+      <label class="ctl"><span>Each frame</span><input type="number" id="cap_ms" min="20" max="60000" step="50" value="500"> ms</label>
+      <div class="ctl"><span>Format</span><select id="cap_fmt" aria-label="Format"><option value="mp4">MP4</option><option value="gif">GIF</option></select>
+        <button class="btn primary" id="rec">Record</button></div>
+      <div id="cap_msg"></div>
+    </section>
+    <p class="hint">Hover for the value, click anywhere for that spot's 5- or 7-day forecast (Esc closes it). Keys: &larr; &rarr; hour, Space play, &uarr; &darr; product.</p>
+  </aside>
+  <div class="main">
+    <div id="map">
+      <canvas id="particles"></canvas>
+      <div class="box" id="readout" hidden></div>
+      <div class="box" id="legend"></div>
+      <div class="box" id="loading" hidden>Loading…</div>
+      <div class="box" id="fc" hidden></div>
+      <div id="shield" hidden title="Recording…"></div>
+    </div>
+    <div class="bar">
+      <button id="prev" title="Previous (Left arrow)">&#9664;</button>
+      <button id="play" title="Play / pause (Space)">Play</button>
+      <button id="next" title="Next (Right arrow)">&#9654;</button>
+      <input type="range" id="slider" min="0" value="0">
+      <span class="lbl" id="lbl"></span>
+    </div>
+  </div>
+</div>
+<script src="runs.js?v=202610062255"></script>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const M=window.ICONMOS, RUNS=M?M.runs.filter(r=>r.map&&r.map.grid):[];
+if(!RUNS.length||!window.maplibregl||!location.protocol.startsWith('http')){
+  document.querySelector('.wrap').innerHTML='<div class="empty">'+(!location.protocol.startsWith('http')?'The interactive map needs the viewer server: run <code>mos.bat view</code>.':
+    !window.maplibregl?'Could not load the map library (no internet?).':'No runs with map data yet. Run <code>mos.bat run</code> or use New run… on the <a href="tables.html">Runs</a> page.')+'</div>';return;}
+const store=(k,v)=>{try{localStorage.setItem('iconmos.'+k,v)}catch(e){}};
+const recall=k=>{try{return localStorage.getItem('iconmos.'+k)}catch(e){return null}};
+const ST=M.map_styles, pad=h=>String(h).padStart(3,'0');
+const st={run:null,prod:recall('prod')||'mos_t2m',k:0,timer:null,v:null,dirv:null,token:0,rec:false};
+$('dom').textContent=' — '+M.domain+(M.static?' · updated '+M.generated:'');
+RUNS.forEach(r=>$('run').add(new Option(r.label+(r.source==='aws'?'  (archive)':''),r.id)));
+const run=()=>RUNS.find(r=>r.id===st.run), meta=()=>run().map;
+const STATIC=!!M.static;   // the published copy: no server, so point forecasts and terrain come from files
+// direction frames that go with a wind product ('wdir' 10 m, 'wdir500'), if the run has them
+const dirName=p=>{const d=ST[p].dir, have=meta().dirs||(meta().dir?['wdir']:[]);return d&&have.includes(d)?d:null};
+const contourName=p=>{const c=ST[p].contour;return c&&(meta().contours||[]).includes(c)?c:null};
+
+// ---- frame data: gzipped uint16 with an offset/scale header
+const cache=new Map();
+async function fetchBin(url){
+  const res=await fetch(url);
+  if(!res.ok)throw new Error(res.status);
+  let buf=await res.arrayBuffer(); const b=new Uint8Array(buf,0,Math.min(2,buf.byteLength));
+  // gunzip here unless the server already did (static hosts may send .gz files either way)
+  if(b[0]===0x1f&&b[1]===0x8b)buf=await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  return buf;
+}
+async function load(url){
+  const buf=await fetchBin(url);
+  const dv=new DataView(buf), lo=dv.getFloat32(0,true), sc=dv.getFloat32(4,true), q=new Uint16Array(buf,8);
+  const v=new Float32Array(q.length); for(let i=0;i<q.length;i++)v[i]=q[i]===65535?NaN:lo+q[i]*sc;
+  return v;
+}
+function lru(map,key,make,max){
+  if(map.has(key)){const v=map.get(key);map.delete(key);map.set(key,v);return v}
+  const p=make(); map.set(key,p); if(map.size>max)map.delete(map.keys().next().value);
+  p.catch(()=>map.delete(key)); return p;
+}
+function frame(name,h){const r=run();
+  return lru(cache,r.id+'/'+name+'/'+h+'/'+r.stamp,()=>load('runs/'+r.id+'/data/'+name+'_'+pad(h)+'.bin.gz?v='+r.stamp),240)}
+// contour lines (isobars, 500 mb heights) of a frame, GeoJSON
+const lineCache=new Map(), EMPTY={type:'FeatureCollection',features:[]};
+function contourLines(name,h){const r=run();
+  return lru(lineCache,r.id+'/'+name+'/'+h+'/'+r.stamp,()=>fetch('runs/'+r.id+'/data/contour_'+name+'_'+pad(h)+'.json?v='+r.stamp)
+    .then(res=>{if(!res.ok)throw new Error(res.status);return res.json()}),120)}
+// ---- which cell each pixel shows. The run's own grid: 13 / 2.5 km, or on the fine runs
+// (0.5 / 0.25 / 0.1 km) the 2.5 km grid refined f times, each fine cell worked out from the
+// 2.5 km frame (bilinear) plus, for temperatures, lapse rate x (2.5 km - fine terrain height).
+// Two canvases: the whole domain ('data') and, zoomed in past that, the visible area at screen
+// resolution ('detail'), so a pixel always shows a single cell of the run's grid.
+const fineF=()=>meta().fine?meta().fine.f:1;
+function cellGrid(){const g=meta().grid,f=fineF();
+  return f>1?Object.assign({},g,{nx:(g.nx-1)*f+1,ny:(g.ny-1)*f+1,dx:g.dx/f}):g}
+// Lambert conformal (spherical, as pyproj with R). rho depends only on latitude and theta only
+// on longitude: x = rho sin(theta), y = rho0 - rho cos(theta)
+function lcc(g){
+  const r=Math.PI/180, f1=g.lat1*r, f2=g.lat2*r, t=f=>Math.tan(Math.PI/4+f/2);
+  const n=Math.abs(f1-f2)<1e-10?Math.sin(f1):Math.log(Math.cos(f1)/Math.cos(f2))/Math.log(t(f2)/t(f1));
+  const F=Math.cos(f1)*Math.pow(t(f1),n)/n, rho0=g.R*F/Math.pow(t(f1),n);
+  return {rho0, rho:lat=>g.R*F/Math.pow(t(lat*r),n), th:lng=>n*((((lng-g.lon0)%360)+540)%360-180)*r,
+    inv:(x,y)=>{const dy=rho0-y, sg=n<0?-1:1, rh=sg*Math.hypot(x,dy), a=Math.atan2(sg*x,sg*dy);
+      return [((g.lon0+a/n/r)%360+540)%360-180, (2*Math.atan(Math.pow(g.R*F/rh,1/n))-Math.PI/2)/r]}};
+}
+const merc=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360));   // Web Mercator y (radians)
+const unmerc=y=>Math.atan(Math.sinh(y))*180/Math.PI;
+const NONE=65535, CHUNK=512, dzCache=new Map();
+function dzChunk(s,cj,ci){const r=run();
+  return lru(dzCache,r.id+'/'+r.stamp+'/'+s+'/'+cj+'/'+ci,()=>load(STATIC?'terrain/'+r.terrain+'/'+s+'/'+cj+'_'+ci+'.bin.gz':
+    'api/dz?run='+r.id+'&s='+s+'&cj='+cj+'&ci='+ci+'&v='+r.stamp),160)}
+// pixel -> fine-grid cell (J, I) for a canvas covering bounds [west, south, east, north]. On the
+// fine grids each pixel takes the nearest of every s-th cell, s (a power of 2) about the cells
+// per pixel, so the terrain needed comes in a few blocks of that stride (dz per pixel).
+async function geometry(b,w,h){
+  const r=run(), g=cellGrid(), f=fineF(), P=lcc(g), N=w*h, J=new Uint16Array(N).fill(NONE), I=new Uint16Array(N);
+  const cpp=(b[2]-b[0])/w*111320*Math.cos((b[1]+b[3])*Math.PI/360)/g.dx;
+  let s=1; if(f>1)while(s*2<=cpp*1.25)s*=2;
+  const S=new Float64Array(w), C=new Float64Array(w), y0=merc(b[3]), y1=merc(b[1]);
+  for(let x=0;x<w;x++){const a=P.th(b[0]+(x+0.5)/w*(b[2]-b[0]));S[x]=Math.sin(a);C[x]=Math.cos(a)}
+  let j0=1e9,j1=-1,i0=1e9,i1=-1;
+  for(let y=0;y<h;y++){const rh=P.rho(unmerc(y0-(y+0.5)/h*(y0-y1)));
+    for(let x=0;x<w;x++){const fi=(rh*S[x]-g.x0)/g.dx, fj=(P.rho0-rh*C[x]-g.y0)/g.dx;
+      if(fi<-0.5||fj<-0.5||fi>=g.nx-0.5||fj>=g.ny-0.5)continue;
+      let i=Math.round(fi/s)*s, j=Math.round(fj/s)*s; if(i>g.nx-1)i-=s; if(j>g.ny-1)j-=s;
+      const p=y*w+x; J[p]=j; I[p]=i;
+      if(j<j0)j0=j; if(j>j1)j1=j; if(i<i0)i0=i; if(i>i1)i1=i;}}
+  const G={b,w,h,s,J,I,dz:null,run:r.id};
+  if(f>1&&j1>=0){
+    const rows=Math.floor((g.ny-1)/s)+1, cols=Math.floor((g.nx-1)/s)+1, keys=[];
+    for(let cj=Math.floor(j0/s/CHUNK);cj<=Math.floor(j1/s/CHUNK);cj++)for(let ci=Math.floor(i0/s/CHUNK);ci<=Math.floor(i1/s/CHUNK);ci++)keys.push([cj,ci]);
+    const chunks=new Map(), got=await Promise.all(keys.map(([cj,ci])=>dzChunk(s,cj,ci)));
+    keys.forEach(([cj,ci],k)=>chunks.set(cj*4096+ci,got[k]));
+    const dz=G.dz=new Float32Array(N);
+    for(let p=0;p<N;p++){if(J[p]===NONE)continue;const a=J[p]/s, c=I[p]/s, cj=a>>9, ci=c>>9;
+      dz[p]=chunks.get(cj*4096+ci)[(a-cj*CHUNK)*Math.min(CHUNK,cols-ci*CHUNK)+(c-ci*CHUNK)]}
+  }
+  return G;
+}
+// value of fine cell (J, I): f = 1: the cell itself; near: nearest 2.5 km cell (categories)
+function cellValue(v,J,I,dz,f,nx,ny,lapse,near){
+  if(f===1)return v[J*nx+I];
+  if(near)return v[Math.round(J/f)*nx+Math.round(I/f)];
+  let j=(J/f)|0, i=(I/f)|0; if(j>ny-2)j=ny-2; if(i>nx-2)i=nx-2;
+  const wy=J/f-j, wx=I/f-i, k=j*nx+i, a=v[k]+(v[k+1]-v[k])*wx, c=v[k+nx]+(v[k+nx+1]-v[k+nx])*wx;
+  return a+(c-a)*wy+lapse*dz;
+}
+const pack=c=>(c[3]<<24|c[2]<<16|c[1]<<8|c[0])>>>0;
+// ---- coloring: one bin per value (levels as in the legend)
+function binOf(lev,v){let a=0,b=lev.length;while(a<b){const m=(a+b)>>1;if(lev[m]<=v)a=m+1;else b=m}return a}
+// precip type: a continuous ramp per type, blended between the colors at the levels, so each
+// amount gets its own color; amounts under the first level fade in from the type's threshold
+function rampAt(C,lev,x){
+  const n=lev.length;
+  if(x>=lev[n-1])return C[n-1];
+  const b=binOf(lev,x)-1, f=(x-lev[b])/(lev[b+1]-lev[b]), p=C[b], q=C[b+1];
+  return [p[0]+(q[0]-p[0])*f,p[1]+(q[1]-p[1])*f,p[2]+(q[2]-p[2])*f,p[3]+(q[3]-p[3])*f];
+}
+function ptypeColor(s){
+  const lev=s.levels, mn=s.min;
+  return (x,t)=>{
+    if(!(x>=mn)||!(t>=1)||!s.ramps[t-1])return 0;
+    const C=s.ramps[t-1];
+    if(x<lev[0]){const c=C[0];return pack([c[0],c[1],c[2],c[3]*(0.35+0.65*(x-mn)/(lev[0]-mn))])}
+    return pack(rampAt(C,lev,x));
+  };
+}
+// type of fine cell (J, I): the nearest 2.5 km cell's, or where that has none, the nearest of
+// the four around it that has one (so the amount's smooth edge keeps a type)
+function typeAt(tv,J,I,f,nx,ny){
+  if(f===1)return Math.round(tv[J*nx+I]);
+  const t=Math.round(tv[Math.round(J/f)*nx+Math.round(I/f)]); if(t>0)return t;
+  let j=(J/f)|0, i=(I/f)|0; if(j>ny-2)j=ny-2; if(i>nx-2)i=nx-2;
+  const wy=J/f-j, wx=I/f-i, k=j*nx+i;
+  let best=0,bw=-1;
+  [[k,(1-wy)*(1-wx)],[k+1,(1-wy)*wx],[k+nx,wy*(1-wx)],[k+nx+1,wy*wx]].forEach(([q,w])=>{const c=Math.round(tv[q]);if(c>0&&w>bw){bw=w;best=c}});
+  return best;
+}
+function paint(G,cv,v){    // returns true if the canvas changed size
+  const m=meta(), g=m.grid, f=fineF(), s=ST[st.prod], pt=s.kind==='ptype', tv=st.tv, lapse=f>1?(m.fine.lapse[st.prod]||0):0;
+  const resized=cv.width!==G.w||cv.height!==G.h;
+  if(resized){cv.width=G.w;cv.height=G.h}
+  const ctx=cv.getContext('2d'), img=ctx.createImageData(G.w,G.h), d=new Uint32Array(img.data.buffer), J=G.J, I=G.I;
+  if(pt){const color=ptypeColor(s);
+    if(f===1){const col=new Uint32Array(v.length);for(let k=0;k<v.length;k++)col[k]=color(v[k],Math.round(tv[k]));
+      for(let p=0;p<J.length;p++)if(J[p]!==NONE)d[p]=col[J[p]*g.nx+I[p]];}
+    else{const dz=G.dz;for(let p=0;p<J.length;p++)if(J[p]!==NONE)
+      d[p]=color(cellValue(v,J[p],I[p],dz[p],f,g.nx,g.ny,0,false),typeAt(tv,J[p],I[p],f,g.nx,g.ny))}}
+  else{const lev=s.levels,L=s.lut.map(pack),color=x=>x===x?L[binOf(lev,x)]:0;
+    if(f===1){const col=new Uint32Array(v.length);for(let k=0;k<v.length;k++)col[k]=color(v[k]);   // one color per cell
+      for(let p=0;p<J.length;p++)if(J[p]!==NONE)d[p]=col[J[p]*g.nx+I[p]];}
+    else{const dz=G.dz;for(let p=0;p<J.length;p++)if(J[p]!==NONE)d[p]=color(cellValue(v,J[p],I[p],dz[p],f,g.nx,g.ny,lapse,false))}}
+  ctx.putImageData(img,0,0);
+  return resized;
+}
+function refresh(id){    // re-upload a canvas to the map once
+  const src=map.getSource(id); if(!src)return; src.play(); map.once('render',()=>src.pause()); map.triggerRepaint();
+}
+// (re)creates a canvas layer: MapLibre doesn't reliably re-upload a canvas that grew, so a
+// canvas that changed size gets a new source
+function canvasLayer(id,cv,coords,visible){
+  const L=map.getStyle().layers, i=L.findIndex(l=>l.id===id), before=i>=0&&i+1<L.length?L[i+1].id:(L.find(l=>l.type==='symbol')||{}).id;
+  if(i>=0)map.removeLayer(id); if(map.getSource(id))map.removeSource(id);
+  map.addSource(id,{type:'canvas',canvas:cv,coordinates:coords,animate:false});
+  map.addLayer({id,type:'raster',source:id,layout:{visibility:visible?'visible':'none'},
+    paint:{'raster-opacity':+$('o_op').value,'raster-fade-duration':0,'raster-resampling':'nearest'}},before);
+}
+const canvas=document.createElement('canvas'), dcanvas=document.createElement('canvas');
+const geo={over:null,overRun:null,det:null,detTok:0};
+function overview(){   // whole-domain geometry, once per run
+  const m=meta(), c=m.corners, id=st.run;
+  if(geo.overRun!==id){geo.overRun=id;geo.over=geometry([c[0][0],c[3][1],c[1][0],c[0][1]],m.w,m.h);geo.over.catch(()=>{if(geo.overRun===id)geo.overRun=null})}
+  return geo.over;
+}
+// zoomed in past the overview canvas: the visible area at screen resolution, redone after each move
+async function detail(){
+  if(!ready)return; const tok=++geo.detTok, m=meta(), c=m.corners, B=map.getBounds(), el=map.getContainer();
+  const W=el.clientWidth, H=el.clientHeight, px=(B.getEast()-B.getWest())/W;
+  const b=[Math.max(B.getWest(),c[0][0]),Math.max(B.getSouth(),c[3][1]),Math.min(B.getEast(),c[1][0]),Math.min(B.getNorth(),c[0][1])];
+  if(px>(c[1][0]-c[0][0])/m.w*0.8||b[0]>=b[2]||b[1]>=b[3]){geo.det=null;map.setLayoutProperty('detail','visibility','none');labels();readout();particles.field();return}
+  const py=(merc(B.getNorth())-merc(B.getSouth()))/H;
+  const w=Math.min(4096,Math.max(1,Math.round((b[2]-b[0])/px))), h=Math.min(4096,Math.max(1,Math.round((merc(b[3])-merc(b[1]))/py)));
+  try{const G=await geometry(b,w,h); if(tok!==geo.detTok||G.run!==st.run)return;
+    geo.det=G; drawDetail(); labels(); readout(); particles.field();}catch(e){}
+}
+function drawDetail(){
+  const G=geo.det; if(!G||!st.v||G.run!==st.run)return;
+  const corners=[[G.b[0],G.b[3]],[G.b[2],G.b[3]],[G.b[2],G.b[1]],[G.b[0],G.b[1]]];
+  if(paint(G,dcanvas,st.v))canvasLayer('detail',dcanvas,corners,true);
+  else{map.getSource('detail').setCoordinates(corners);map.setLayoutProperty('detail','visibility','visible');refresh('detail')}
+}
+// value (and wind direction) at a point, from the canvas that's showing it
+function sample(lng,lat){
+  const m=meta(), g=m.grid, f=fineF(), s=ST[st.prod];
+  let G=geo.det; if(!G||lng<G.b[0]||lng>G.b[2]||lat<G.b[1]||lat>G.b[3])G=geo.overDone;
+  if(!G||!st.v||G.run!==st.run)return null;
+  const x=Math.floor((lng-G.b[0])/(G.b[2]-G.b[0])*G.w), y=Math.floor((merc(G.b[3])-merc(lat))/(merc(G.b[3])-merc(G.b[1]))*G.h);
+  if(x<0||y<0||x>=G.w||y>=G.h)return null; const p=y*G.w+x, J=G.J[p], I=G.I[p]; if(J===NONE)return null;
+  const dz=G.dz?G.dz[p]:0;
+  return {x:cellValue(st.v,J,I,dz,f,g.nx,g.ny,f>1?(m.fine.lapse[st.prod]||0):0,false),
+    t:st.tv?typeAt(st.tv,J,I,f,g.nx,g.ny):null,
+    dir:st.dirv?cellValue(st.dirv,J,I,0,f,g.nx,g.ny,0,true):null};
+}
+// value text as on the labels: blank below the first level of amount maps
+function valText(s,x,dir){
+  if(x==null||x!==x)return '';
+  if(s.discrete&&x<s.levels[0])return '';
+  let t;
+  if(s.decimals){t=x.toFixed(s.decimals);if(x<1)t=t.replace(/^0/,'')}
+  else{const n=Math.round(x);t=(s.signed&&n>0?'+':'')+n}
+  return dir&&t!=='0'&&t!==''?dir+' '+t:t;
+}
+const COMPASS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const compass=d=>d==null||d!==d?null:COMPASS[Math.round(d/22.5)%16];
+// exact amount: one more decimal for light amounts (in: 0.004, 0.12; mm: 0.25, 3.4)
+const amtText=(s,x)=>x.toFixed(s.decimals+(x<Math.pow(10,1-s.decimals)?1:0));
+function ptypeText(s,x,t){return x>=s.min&&t>=1&&s.types[t-1]?s.types[t-1]+' · '+amtText(s,x)+' '+s.unit:'No precipitation'}
+
+// ---- map
+const map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',attributionControl:{compact:true},
+  keyboard:false,   // arrow keys step through hours instead of panning
+  dragRotate:false, pitchWithRotate:false, touchPitch:false,   // north up: the canvases are lined up with the screen
+  canvasContextAttributes:{preserveDrawingBuffer:true},          // so captures can read the map
+  bounds:[[RUNS[0].map.corners[3][0],RUNS[0].map.corners[3][1]],[RUNS[0].map.corners[1][0],RUNS[0].map.corners[1][1]]],fitBoundsOptions:{padding:10}});
+window.iconmosMap=map;   // for debugging from the browser console
+map.touchZoomRotate.disableRotation();
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+map.addControl(new maplibregl.ScaleControl({unit:M.units==='metric'?'metric':'imperial'}),'bottom-right');
+let cities=[], ready=false;
+map.on('load',async()=>{
+  const below=(map.getStyle().layers.find(l=>l.type==='symbol')||{}).id;
+  map.getStyle().layers.forEach(l=>{if(l['source-layer']==='place'&&!/state|country/.test(l.id))map.setLayoutProperty(l.id,'visibility','none')});
+  const m=meta();
+  canvas.width=canvas.height=dcanvas.width=dcanvas.height=1;
+  map.addSource('data',{type:'canvas',canvas:canvas,coordinates:m.corners,animate:false});
+  map.addLayer({id:'data',type:'raster',source:'data',paint:{'raster-opacity':+$('o_op').value,'raster-fade-duration':0,'raster-resampling':'nearest'}},below);
+  map.addSource('detail',{type:'canvas',canvas:dcanvas,coordinates:m.corners,animate:false});
+  map.addLayer({id:'detail',type:'raster',source:'detail',layout:{visibility:'none'},paint:{'raster-opacity':+$('o_op').value,'raster-fade-duration':0,'raster-resampling':'nearest'}},below);
+  // roads over the data, from the basemap's own tiles: thin dark lines that read on any color
+  // (the basemap's white roads stay underneath). Bigger roads show from lower zooms.
+  const roadW=(a,b,c)=>['interpolate',['exponential',1.4],['zoom'],5,a,10,b,16,c];
+  [['road_minor',['minor','service'],11,'rgba(35,38,45,.32)',roadW(0.2,0.3,1.8)],
+   ['road_secondary',['secondary','tertiary'],8,'rgba(35,38,45,.42)',roadW(0.25,0.6,2.4)],
+   ['road_primary',['primary','trunk'],6,'rgba(30,32,38,.5)',roadW(0.35,0.9,3)],
+   ['road_motorway',['motorway'],5,'rgba(25,26,30,.62)',roadW(0.6,1.4,4)]].forEach(([id,cls,z,col,w])=>
+    map.addLayer({id,type:'line',source:'openmaptiles','source-layer':'transportation',minzoom:z,
+      filter:['all',['in',['get','class'],['literal',cls]],['!=',['get','brunnel'],'tunnel']],
+      layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':col,'line-width':w}},below));
+  // coast + lake outlines over the data, from the basemap's own water polygons
+  map.addLayer({id:'coast',type:'line',source:'openmaptiles','source-layer':'water',paint:{'line-color':'#333','line-width':0.7,'line-opacity':0.8}},below);
+  try{
+    const b=await fetch('borders.json').then(r=>r.json());
+    map.addSource('borders',{type:'geojson',data:b});
+    map.addLayer({id:'county',type:'line',source:'borders',filter:['==',['get','kind'],'county'],paint:{'line-color':'#555','line-width':0.5,'line-opacity':0.7}},below);
+    map.addLayer({id:'state',type:'line',source:'borders',filter:['==',['get','kind'],'state'],paint:{'line-color':'#222','line-width':1.2}},below);
+  }catch(e){}
+  map.addSource('contours',{type:'geojson',data:EMPTY});
+  map.addLayer({id:'contour',type:'line',source:'contours',layout:{'line-join':'round'},
+    paint:{'line-color':'#000','line-width':['interpolate',['linear'],['zoom'],5,1.6,10,2.6],'line-opacity':0.9}},below);
+  map.addLayer({id:'contour_lbl',type:'symbol',source:'contours',layout:{'symbol-placement':'line','symbol-spacing':260,
+    'text-field':['get','v'],'text-font':['Noto Sans Bold'],'text-size':11,'text-keep-upright':true,'text-padding':8},
+    paint:{'text-color':'#15171c','text-halo-color':'#fff','text-halo-width':1.6}});
+  try{cities=await fetch('cities.json').then(r=>r.json())}catch(e){}
+  map.addSource('cities',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  // each city comes with the zoom it shows from (worked out when cities.json is made, so the
+  // most important places always win); labels() passes on only those for the current zoom
+  map.addLayer({id:'cities',type:'symbol',source:'cities',layout:{
+    'text-field':['case',['==',['get','v'],''],['get','name'],['format',['get','v'],{'font-scale':1.2,'text-font':['literal',['Noto Sans Bold']]},'\n',{},['get','name'],{'font-scale':0.85}]],
+    'text-font':['Noto Sans Regular'],'text-size':12,'text-allow-overlap':true,'text-line-height':1.1},
+    paint:{'text-color':'#111','text-halo-color':'#fff','text-halo-width':1.6}});
+  ready=true; applyOpts(); show().then(detail);
+});
+map.on('moveend',()=>detail());
+let labelZoom=null;
+map.on('zoom',()=>{if(Math.floor(map.getZoom()*4)/4!==labelZoom)labels()});
+const ROADS=['road_minor','road_secondary','road_primary','road_motorway'];
+function applyOpts(){
+  $('o_op_v').textContent=Math.round(+$('o_op').value*100)+'%';
+  if(!ready)return;
+  map.setPaintProperty('data','raster-opacity',+$('o_op').value); map.setPaintProperty('detail','raster-opacity',+$('o_op').value);
+  if(map.getLayer('county'))map.setLayoutProperty('county','visibility',$('o_cnty').checked?'visible':'none');
+  ROADS.forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,'visibility',$('o_roads').checked?'visible':'none')});
+  ['contour','contour_lbl'].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,'visibility',$('o_cont').checked?'visible':'none')});
+}
+// map options are remembered in this browser
+[['o_vals','checked'],['o_cnty','checked'],['o_roads','checked'],['o_cont','checked'],['o_op','value']].forEach(([id,k])=>{
+  const v=recall('opt.'+id); if(v!=null)$(id)[k]=k==='checked'?v==='1':v;
+  $(id).addEventListener('input',()=>store('opt.'+id,k==='checked'?($(id).checked?'1':'0'):$(id).value));});
+['o_cnty','o_op','o_roads','o_cont'].forEach(id=>$(id).oninput=applyOpts);
+$('o_vals').onchange=()=>labels();
+applyOpts();
+
+// ---- products, hours
+function inGroup(g){return meta().products.filter(x=>M.products[x]&&M.products[x].group===g)}
+function ordered(){return M.groups.flatMap(inGroup)}
+// a small preview of each product's color scale for the menu
+function swatch(p){const s=ST[p];
+  const C=s.kind==='ptype'?s.ramps[0]:s.lut.slice(1,-1), n=6, css=c=>'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')';
+  return 'linear-gradient(90deg,'+Array.from({length:n},(_,i)=>css(C[Math.round(i/(n-1)*(C.length-1))])).join(',')+')';
+}
+function drawProducts(){let h='';
+  M.groups.forEach(g=>{const ps=inGroup(g);if(!ps.length)return;
+    h+='<div class="grp"><div class="grp-h">'+g+'</div><div class="prods">'+ps.map(x=>'<button class="prod'+(x===st.prod?' on':'')+'" data-p="'+x+'"'+(x===st.prod?' aria-current="true"':'')+
+      ' title="'+esc(M.products[x].title.replace('{n}-h ',''))+'"><span class="sw" style="background:'+swatch(x)+'"></span><span>'+M.products[x].label+'</span></button>').join('')+'</div></div>';});
+  $('prods').innerHTML=h;
+  $('prods').querySelectorAll('.prod').forEach(b=>b.onclick=()=>{setProd(b.dataset.p)});
+  $('windcard').hidden=!dirName(st.prod);
+}
+function setProd(p){if(st.rec)return;st.prod=p;store('prod',p);drawProducts();legend();show();}
+function legend(){
+  const s=ST[st.prod], P=M.products[st.prod], L=$('legend');
+  const bar=(lut,lev,w)=>{const c=document.createElement('canvas');c.width=w;c.height=12;const x=c.getContext('2d');
+    const n=lev.length-1;for(let i=0;i<n;i++){const col=lut[i];x.fillStyle='rgba('+col[0]+','+col[1]+','+col[2]+','+(col[3]/255)+')';
+      x.fillRect(Math.floor(i*w/n),0,Math.ceil(w/n)+1,12)}return c};
+  L.innerHTML='<div class="t">'+P.title.replace('{n}-h ','')+' ('+s.unit+')</div>';
+  const fmt=v=>s.discrete&&v<1?String(v).replace(/^0/,''):String(v);
+  const ticks=(lev,tk,w)=>{const d=document.createElement('div');d.style.cssText='position:relative;height:14px;width:'+w+'px;font-size:10px';
+    const n=lev.length-1; tk.forEach(t=>{let i=lev.indexOf(t);if(i<0)i=(t-lev[0])/(lev[n]-lev[0])*n;const sp=document.createElement('span');
+      sp.textContent=fmt(t);sp.style.cssText='position:absolute;transform:translateX(-50%);left:'+(i/n*w)+'px';d.appendChild(sp)});return d};
+  if(s.kind==='ptype'){const row=document.createElement('div');row.style.cssText='display:flex;gap:12px';
+    s.types.forEach((t,k)=>{const c=document.createElement('div');c.innerHTML='<div style="font-size:11px">'+t+'</div>';
+      const cv=document.createElement('canvas');cv.width=130;cv.height=12;rampBar(cv.getContext('2d'),s.ramps[k],s.levels,0,0,130,12);
+      c.appendChild(cv);c.appendChild(ticks(s.levels,s.levels.filter((_,i)=>i%2===0),130));row.appendChild(c)});
+    L.appendChild(row);}
+  else{const w=Math.min(420,window.innerWidth-80);L.appendChild(bar(s.lut.slice(1,-1),s.levels,w));L.appendChild(ticks(s.levels,s.ticks,w));}
+}
+// a precip-type ramp as a gradient: levels evenly spaced along the bar, as the tick marks are
+function rampBar(x,C,lev,bx,by,w,h){
+  const n=lev.length-1;
+  for(let px=0;px<w;px++){const p=(px+0.5)/w*n, i=Math.min(n-1,Math.floor(p)), c=rampAt(C,lev,lev[i]+(p-i)*(lev[i+1]-lev[i]));
+    x.fillStyle='rgba('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+','+(c[3]/255)+')';x.fillRect(bx+px,by,1,h)}
+}
+function drawHours(){$('slider').max=run().steps.length-1;}
+function label(){
+  const r=run(), v=new Date(new Date(r.init).getTime()+r.steps[st.k]*3600e3);
+  let loc='';try{loc=v.toLocaleString('en-US',{timeZone:M.tz,weekday:'short',hour:'numeric',timeZoneName:'short'})}catch(e){}
+  $('lbl').textContent='F'+pad(r.steps[st.k])+'  ·  valid '+v.toISOString().slice(0,13).replace('T',' ')+'Z'+(loc?'  ·  '+loc:'');
+  $('slider').value=st.k;
+}
+async function show(){
+  label(); if(!ready)return;
+  const tok=++st.token, r=run(), h=r.steps[st.k], wind=dirName(st.prod), pt=ST[st.prod].kind==='ptype', cn=contourName(st.prod);
+  const slow=setTimeout(()=>{$('loading').hidden=false},150);
+  try{
+    const [v,dir,typ,G,cl]=await Promise.all([frame(st.prod,h),wind?frame(wind,h):null,pt?frame('ptypecat',h):null,overview(),
+      cn?contourLines(cn,h).catch(()=>null):null]);
+    if(tok!==st.token)return;
+    st.v=v; st.dirv=dir; st.tv=typ; geo.overDone=G;
+    map.getSource('contours').setData(cl||EMPTY);
+    if(paint(G,canvas,v))canvasLayer('data',canvas,meta().corners,true);
+    else{const src=map.getSource('data');
+      if(JSON.stringify(src.coordinates)!==JSON.stringify(meta().corners))src.setCoordinates(meta().corners);
+      refresh('data');}
+    drawDetail();
+    labels(); readout(); if(fc.data)drawForecast(); particles.field();
+    [1,2,3].forEach(d=>{const j=st.k+d;if(j<r.steps.length){frame(st.prod,r.steps[j]).catch(()=>{});
+      if(wind)frame(wind,r.steps[j]).catch(()=>{}); if(pt)frame('ptypecat',r.steps[j]).catch(()=>{});
+      if(cn)contourLines(cn,r.steps[j]).catch(()=>{})}});
+  }catch(e){if(tok===st.token)$('readout').hidden=false,$('readout').textContent='Could not load this frame ('+e.message+')'}
+  finally{clearTimeout(slow);if(tok===st.token)$('loading').hidden=true}
+}
+function labels(){
+  if(!ready)return; const s=ST[st.prod], on=$('o_vals').checked;
+  labelZoom=Math.floor(map.getZoom()*4)/4;
+  const feats=cities.filter(c=>c[3]<=labelZoom).map(([name,lat,lon])=>{let v='';if(on){const q=sample(lon,lat);if(q)v=valText(s,q.x,compass(q.dir))}
+    return {type:'Feature',properties:{name:name,v:v},geometry:{type:'Point',coordinates:[lon,lat]}}});
+  map.getSource('cities').setData({type:'FeatureCollection',features:feats});
+}
+// ---- hover readout
+let hover=null;
+function readout(){
+  const R=$('readout'), q=hover&&sample(hover.lng,hover.lat), s=ST[st.prod]; if(!q){R.hidden=true;return}
+  const x=q.x; let t;
+  if(s.kind==='ptype')t=ptypeText(s,x,q.t);
+  else if(x!==x)t='–';
+  else{const dir=q.dir!=null&&q.dir===q.dir?compass(q.dir)+' ':'';
+    t=dir+(s.decimals?x.toFixed(s.decimals):(s.signed&&x>0?'+':'')+Math.round(x))+' '+s.unit;
+    if(s.discrete&&x<s.levels[0])t='0 '+s.unit;}
+  R.innerHTML='<b>'+t+'</b><br><span style="color:#5b6474">'+hover.lat.toFixed(2)+', '+hover.lng.toFixed(2)+'</span>'; R.hidden=false;
+}
+// ---- wind particles: spread evenly over the map (one per cell of a screen grid whose size
+// follows the density setting), each moving the way the wind under it blows (MOS speed, ICON
+// direction) at a pace proportional to the speed. The wind is sampled on a screen grid after
+// every frame change and map move; while panning the particles move with the map.
+const particles=(()=>{
+  const cv=$('particles'), ctx=cv.getContext('2d'), STEP=10, PX=5;   // PX: screen px/s per m/s at speed 1
+  let F=null, P=[], raf=0, last=0, W=0, H=0, R=1, ox=null, oy=null, blank=true;
+  const opt={speed:1,dens:8,trail:0.6,col:'dark'};   // dark shows over calm (near-white) wind too
+  const on=()=>ready&&$('p_on').checked&&!!dirName(st.prod)&&!!st.dirv;
+  // 1 canvas px per CSS px: thin lines don't need more, and it's about half the work on hi-dpi screens
+  function size(){const el=map.getContainer();W=el.clientWidth;H=el.clientHeight;R=1;
+    const w=Math.round(W*R), h=Math.round(H*R); if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;cv.style.width=W+'px';cv.style.height=H+'px'}}
+  function clear(){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);blank=true}
+  function stop(){cancelAnimationFrame(raf);raf=0;F=null;P=[];clear()}
+  // wind as screen px/s (at speed 1) on a STEP-px grid over the visible map; NaN = no data.
+  // The map is north-up Web Mercator, so screen x is linear in longitude and y in Mercator y.
+  function field(){
+    if(!on()){stop();return}
+    size();
+    const nx=Math.ceil(W/STEP)+2, ny=Math.ceil(H/STEP)+2, U=new Float32Array(nx*ny), V=new Float32Array(nx*ny);
+    const a0=map.unproject([0,0]), a1=map.unproject([W,H]), y0=merc(a0.lat), y1=merc(a1.lat);
+    const u=ST[st.prod].unit, ms=(u==='mph'?0.44704:u==='kt'?0.514444:u==='km/h'?1/3.6:1)*(ST[st.prod].pace||1);
+    for(let j=0;j<ny;j++){const lat=unmerc(y0+(y1-y0)*j*STEP/H);
+      for(let i=0;i<nx;i++){const k=j*nx+i, q=sample(a0.lng+(a1.lng-a0.lng)*i*STEP/W,lat);
+        if(!q||q.x!==q.x||q.dir==null||q.dir!==q.dir){U[k]=V[k]=NaN;continue}
+        const sp=Math.max(0,q.x)*ms*PX, a=q.dir*Math.PI/180;     // dir = where it blows from
+        U[k]=-Math.sin(a)*sp; V[k]=Math.cos(a)*sp;}}
+    // same view as before (e.g. the next hour): keep the particles, only the wind changes
+    const same=F&&F.w===W&&F.h===H&&F.zoom===map.getZoom()&&Math.abs(map.project(F.origin).x)<0.5&&Math.abs(map.project(F.origin).y)<0.5;
+    F={nx,ny,U,V,w:W,h:H,zoom:map.getZoom(),origin:a0};
+    if(!same){seed();clear()}
+    if(!raf){last=0;raf=requestAnimationFrame(tick)}
+  }
+  function vel(x,y){   // bilinear; null next to missing data
+    const gx=x/STEP, gy=y/STEP, i=gx|0, j=gy|0;
+    if(gx<0||gy<0||i>=F.nx-1||j>=F.ny-1)return false;
+    const fx=gx-i, fy=gy-j, k=j*F.nx+i, U=F.U, V=F.V, n=F.nx;
+    vu=(U[k]*(1-fx)+U[k+1]*fx)*(1-fy)+(U[k+n]*(1-fx)+U[k+n+1]*fx)*fy;
+    vv=(V[k]*(1-fx)+V[k+1]*fx)*(1-fy)+(V[k+n]*(1-fx)+V[k+n+1]*fx)*fy;
+    return vu===vu&&vv===vv;
+  }
+  let vu=0, vv=0;
+  // one particle per grid cell that has wind at its center; it is reborn somewhere in its own
+  // cell, so they stay evenly spread however the wind moves them
+  function seed(){
+    const sp=100/Math.sqrt(opt.dens), cx=Math.ceil(F.w/sp), cy=Math.ceil(F.h/sp);
+    P=[];
+    for(let j=0;j<cy;j++)for(let i=0;i<cx;i++)if(vel((i+0.5)*sp,(j+0.5)*sp)){
+      const p={i,j,sp,x:0,y:0,age:0,max:0}; spawn(p); p.age=Math.floor(Math.random()*p.max); P.push(p);}
+  }
+  function spawn(p){p.age=0;p.max=50+Math.floor(Math.random()*70);p.x=(p.i+Math.random())*p.sp;p.y=(p.j+Math.random())*p.sp}
+  // each frame: fade what's there a little, then draw one new segment per particle (the fading
+  // leaves the trails), so the cost doesn't grow with the trail length
+  function tick(t){
+    raf=requestAnimationFrame(tick);
+    if(!F)return;
+    const dt=last?Math.min(0.1,(t-last)/1000):1/60; last=t;
+    if(map.getZoom()!==F.zoom){if(!blank)clear();return}        // zooming: back once it settles
+    const o=map.project(F.origin);
+    ctx.setTransform(1,0,0,1,0,0);
+    if(o.x!==ox||o.y!==oy){ox=o.x;oy=o.y;if(!blank)clear()}       // panned: trails start over
+    else if(!blank){const keep=Math.pow(0.78+0.2*opt.trail,dt*60);
+      ctx.globalCompositeOperation='destination-in';ctx.fillStyle='rgba(0,0,0,'+keep.toFixed(3)+')';
+      ctx.fillRect(0,0,cv.width,cv.height);ctx.globalCompositeOperation='source-over'}
+    ctx.setTransform(R,0,0,R,o.x*R,o.y*R);
+    const k=opt.speed*dt; ctx.beginPath();
+    for(let n=0;n<P.length;n++){const p=P[n];
+      if(!vel(p.x,p.y)||++p.age>p.max){spawn(p);continue}
+      const x=p.x+vu*k, y=p.y+vv*k; ctx.moveTo(p.x,p.y); ctx.lineTo(x,y); p.x=x; p.y=y;}
+    ctx.lineCap='butt'; ctx.lineWidth=1.5; ctx.strokeStyle=opt.col==='light'?'rgba(255,255,255,.95)':'rgba(20,24,32,.85)';
+    ctx.stroke(); blank=false;
+  }
+  // settings (remembered in this browser)
+  const fmtSpeed=()=>$('p_speed_v').textContent=opt.speed+'×';
+  const fmtDens=()=>$('p_dens_v').textContent=opt.dens+' per 100×100 px';
+  const fmtTrail=()=>$('p_trail_v').textContent=Math.round(opt.trail*100)+'%';
+  try{const s=JSON.parse(recall('particles')||'{}');Object.assign(opt,s);if(s.on===false)$('p_on').checked=false}catch(e){}
+  const save=()=>store('particles',JSON.stringify(Object.assign({on:$('p_on').checked},opt)));
+  $('p_speed').value=opt.speed;$('p_dens').value=opt.dens;$('p_trail').value=opt.trail;
+  $('p_col').querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.v===opt.col);
+    b.onclick=()=>{opt.col=b.dataset.v;$('p_col').querySelectorAll('button').forEach(c=>c.classList.toggle('on',c===b));save()}});
+  const dim=()=>$('p_opts').classList.toggle('dim',!$('p_on').checked);
+  $('p_speed').oninput=e=>{opt.speed=+e.target.value;fmtSpeed();save()};
+  $('p_dens').oninput=e=>{opt.dens=+e.target.value;fmtDens();save();if(F)seed()};
+  $('p_trail').oninput=e=>{opt.trail=+e.target.value;fmtTrail();save()};
+  $('p_on').onchange=()=>{dim();save();field()};
+  fmtSpeed();fmtDens();fmtTrail();dim();
+  map.on('resize',()=>{if(F)field()});
+  return {field,canvas:cv};
+})();
+map.on('mousemove',e=>{hover=e.lngLat;readout()});
+map.getCanvas().addEventListener('mouseleave',()=>{hover=null;readout()});
+// ---- click: 5- or 7-day forecast for that spot (7 when the run reaches day 7)
+const fc={data:null,at:null,marker:null,tok:0,x:[]};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+map.on('click',e=>openForecast(e.lngLat));
+async function openForecast(at){
+  const r=run(), tok=++fc.tok, P=$('fc'); fc.at=at;
+  if(!fc.marker)fc.marker=new maplibregl.Marker({color:'#1f5fbf',scale:0.7});
+  fc.marker.setLngLat(at).addTo(map);
+  P.hidden=false;
+  if(!fc.data){P.innerHTML='<div class="hd"><b>Loading forecast…</b><button class="x" title="Close (Esc)">&times;</button></div>';
+    P.querySelector('.x').onclick=closeForecast;}
+  try{let d;
+    if(STATIC)d=await pointStatic(at.lat,at.lng);
+    else{const res=await fetch('api/point?run='+r.id+'&lat='+at.lat.toFixed(4)+'&lon='+at.lng.toFixed(4));
+      d=await res.json(); if(!res.ok)throw new Error(d.error);}
+    if(tok!==fc.tok)return; d.run=r; fc.data=d; drawForecast();}
+  catch(err){if(tok!==fc.tok)return; fc.data=null;
+    P.innerHTML='<div class="hd"><b>'+esc(err.message)+'</b><button class="x" title="Close (Esc)">&times;</button></div>';
+    P.querySelector('.x').onclick=closeForecast;}
+}
+// the published site has no server: the forecast at a point comes from tiles holding the time
+// series of a block of cells (r.pt.block squared) for each variable, in display units, made by
+// publish.py. Worked out as the server's mapdata.point does: on the fine grids the 2.5 km values
+// interpolated, temperatures moved to the fine terrain, categories from the nearest 2.5 km cell.
+const ptCache=new Map();
+function ptTile(tj,ti){const r=run(), g=meta().grid, B=r.pt.block, ns=r.steps.length, nv=r.pt.vars.length;
+  const nc=Math.min(B,g.ny-tj*B)*Math.min(B,g.nx-ti*B);
+  return lru(ptCache,r.id+'/'+r.stamp+'/'+tj+'/'+ti,async()=>{
+    // header: offset, scale per variable; then uint16 [variable][cell][step], delta-coded along
+    // the steps, all low bytes then all high bytes
+    const buf=await fetchBin('runs/'+r.id+'/pt/'+tj+'_'+ti+'.bin.gz?v='+r.stamp), dv=new DataView(buf), n=nv*nc*ns;
+    const by=new Uint8Array(buf,nv*8,2*n), out=new Float32Array(n);
+    for(let k=0;k<nv;k++){const lo=dv.getFloat32(8*k,true), sc=dv.getFloat32(8*k+4,true);
+      for(let c=k*nc;c<(k+1)*nc;c++){let q=0;
+        for(let p=c*ns;p<(c+1)*ns;p++){q=(q+(by[p]|by[n+p]<<8))&65535;out[p]=q===65535?NaN:lo+q*sc}}}
+    return {nc,ns,out};
+  },48)}
+async function cellSeries(j,i){
+  const r=run(), g=meta().grid, B=r.pt.block, tj=Math.floor(j/B), ti=Math.floor(i/B), T=await ptTile(tj,ti);
+  const c=(j-tj*B)*Math.min(B,g.nx-ti*B)+(i-ti*B);
+  return name=>{const k=r.pt.vars.indexOf(name);return k<0?null:T.out.subarray((k*T.nc+c)*T.ns,(k*T.nc+c+1)*T.ns)}}
+async function pointStatic(lat,lon){
+  const r=run(), g=meta().grid, f=fineF(), P=lcc(g), PT=r.pt, ns=r.steps.length;
+  if(!PT)throw new Error('no point forecasts for this run');
+  const rh=P.rho(lat), a=P.th(lon), fi=(rh*Math.sin(a)-g.x0)/g.dx, fj=(P.rho0-rh*Math.cos(a)-g.y0)/g.dx;
+  if(!(fi>=0&&fi<=g.nx-1&&fj>=0&&fj<=g.ny-1))throw new Error('that point is outside the forecast area');
+  let j=Math.round(fj), i=Math.round(fi), px=g.x0+i*g.dx, py=g.y0+j*g.dx, dz=0, get, elev;
+  if(f===1){const S=await cellSeries(j,i);get=name=>S(name);elev=S('hgt')[0]}
+  else{const J=Math.round(fj*f), I=Math.round(fi*f); j=Math.round(J/f); i=Math.round(I/f);
+    const j0=Math.min(Math.floor(J/f),g.ny-2), i0=Math.min(Math.floor(I/f),g.nx-2), wy=J/f-j0, wx=I/f-i0;
+    const W=[(1-wy)*(1-wx),(1-wy)*wx,wy*(1-wx),wy*wx], cols=cellGrid().nx, cj=Math.floor(J/CHUNK), ci=Math.floor(I/CHUNK);
+    const [C,N,ch]=await Promise.all([Promise.all([[j0,i0],[j0,i0+1],[j0+1,i0],[j0+1,i0+1]].map(([y,x])=>cellSeries(y,x))),
+      cellSeries(j,i),dzChunk(1,cj,ci)]);
+    dz=ch[(J-cj*CHUNK)*Math.min(CHUNK,cols-ci*CHUNK)+(I-ci*CHUNK)];
+    const lin=name=>{const A=C.map(c=>c(name));if(!A[0])return null;const o=new Float32Array(ns);
+      for(let s=0;s<ns;s++)o[s]=A[0][s]*W[0]+A[1][s]*W[1]+A[2][s]*W[2]+A[3][s]*W[3];return o};
+    get=(name,near)=>near?N(name):lin(name);
+    elev=lin('hgt')[0]-dz; px=g.x0+I*g.dx/f; py=g.y0+J*g.dx/f;}
+  const lapsed=name=>{const A=get(name), L=(PT.lapse[name]||0)*dz;return A&&L?A.map(x=>x+L):A};
+  const rnd=(A,d)=>A?Array.from(A,x=>x===x?+x.toFixed(d):null):null;
+  const qp=get('qpf'), sn=get('snow'), wd=get('wd',true), pt=get('ptype',true), [plon,plat]=P.inv(px,py);
+  return {lat:+plat.toFixed(3), lon:+plon.toFixed(3), elev_m:Math.round(elev)+0, res:r.res, steps:r.steps, units:PT.units,
+    t:rnd(lapsed('t'),1), td:rnd(lapsed('td'),1), ws:rnd(get('ws'),1), wd:wd?Array.from(wd,x=>compass(x)):null,
+    wchill:rnd(lapsed('wchill'),1), sky:rnd(get('sky'),0), qpf:rnd(qp&&qp.map(x=>Math.max(x,0)),2),
+    snow:rnd(sn&&sn.map((x,s)=>s?Math.max(x-sn[s-1],0):0),1), ptype:pt?Array.from(pt,x=>Math.round(x)):null,
+    raw_t:rnd(lapsed('raw_t'),1)};
+}
+function closeForecast(){fc.tok++;fc.data=null;$('fc').hidden=true;if(fc.marker)fc.marker.remove()}
+let LP=null;    // valid time -> local date, hour and labels
+function local(ms){
+  if(!LP){const o={year:'numeric',month:'short',day:'numeric',weekday:'short',hour:'numeric',minute:'numeric',hourCycle:'h23'};
+    try{LP=new Intl.DateTimeFormat('en-US',Object.assign({timeZone:M.tz},o))}catch(e){LP=new Intl.DateTimeFormat('en-US',Object.assign({timeZone:'UTC'},o))}}
+  const p={};LP.formatToParts(new Date(ms)).forEach(x=>p[x.type]=x.value);
+  return {key:p.year+' '+p.month+' '+p.day,wd:p.weekday,md:p.month+' '+p.day,h:(+p.hour%24)+(+p.minute)/60};
+}
+// daytime sky words as the NWS uses them; precipitation takes over when there's enough of it
+function skyWord(c){return c<15?['Sunny','sun']:c<40?['Mostly Sunny','msun']:c<65?['Partly Sunny','psun']:c<87.5?['Mostly Cloudy','mcloud']:['Cloudy','cloud']}
+function condition(sky,p,type,metric){
+  const heavy=metric?6:0.25, light=metric?1:0.04, sun=sky!=null&&sky<65;
+  if(p>=light){
+    if(type===2)return p>=heavy?['Snow','snow']:sun?['Snow Showers','snow']:['Light Snow','snow'];
+    if(type===3)return ['Wintry Mix','mix'];
+    if(type===4)return [p>=heavy?'Freezing Rain':'Light Freezing Rain','ice'];
+    return p>=heavy?['Rain','rain']:sun?['Showers','showers']:['Light Rain','rain'];}
+  return sky==null?['–','cloud']:skyWord(sky);
+}
+const CLOUD='<circle cx="15" cy="20" r="6"/><circle cx="23" cy="15.5" r="8"/><circle cx="30.5" cy="20.5" r="5.5"/><rect x="9" y="19" width="27" height="8" rx="4"/>';
+function sunSvg(x,y,r){let s='<g stroke="#f2a900" stroke-width="2" stroke-linecap="round">';
+  for(let k=0;k<8;k++){const a=k*Math.PI/4,c=Math.cos(a),n=Math.sin(a);
+    s+='<line x1="'+(x+c*(r+3)).toFixed(1)+'" y1="'+(y+n*(r+3)).toFixed(1)+'" x2="'+(x+c*(r+6)).toFixed(1)+'" y2="'+(y+n*(r+6)).toFixed(1)+'"/>'}
+  return s+'</g><circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#ffc21a"/>'}
+const cloudSvg=(fill,x,y,sc)=>'<g fill="'+fill+'" transform="translate('+x+' '+y+') scale('+sc+')">'+CLOUD+'</g>';
+function drops(col,xs){return '<g stroke="'+col+'" stroke-width="2" stroke-linecap="round">'+xs.map(x=>'<line x1="'+x+'" y1="30" x2="'+(x-2)+'" y2="35"/>').join('')+'</g>'}
+const flakes=xs=>xs.map(x=>'<circle cx="'+x+'" cy="32.5" r="2" fill="#fff" stroke="#5b8fd1" stroke-width="1.2"/>').join('');
+function icon(kind){
+  const b={sun:sunSvg(22,18,8), msun:sunSvg(17,14,7)+cloudSvg('#c9ced6',15,14,0.62), psun:sunSvg(15,12,7)+cloudSvg('#bfc5ce',6,6,0.85),
+    mcloud:sunSvg(12,10,5.5)+cloudSvg('#aeb5c0',4,4,0.92), cloud:cloudSvg('#c8cdd4',-5,-5,0.85)+cloudSvg('#9aa2ae',3,3,0.92),
+    rain:cloudSvg('#8f98a5',0,0,1)+drops('#2f7bd9',[15,22,29]), showers:sunSvg(13,10,6)+cloudSvg('#9fa7b3',4,1,0.92)+drops('#2f7bd9',[19,26]),
+    snow:cloudSvg('#a9b0bb',0,0,1)+flakes([15,22,29]), mix:cloudSvg('#98a0ac',0,0,1)+drops('#2f7bd9',[16])+flakes([23,30]),
+    ice:cloudSvg('#98a0ac',0,0,1)+drops('#c2185b',[15,22,29])}[kind]||'';
+  return '<svg width="44" height="38" viewBox="0 0 44 38" aria-hidden="true">'+b+'</svg>';
+}
+function forecastDays(d){
+  const init=new Date(d.run.init).getTime(), n=d.steps.length, want=d.steps[n-1]>=168?7:5, days=[], by={};
+  d.steps.forEach((s,i)=>{const ms=init+s*3600e3, L=local(ms);
+    if(!by[L.key]){by[L.key]={key:L.key,wd:L.wd,md:L.md,pts:[],q:0,typ:{},snow:0};days.push(by[L.key])}
+    by[L.key].pts.push({i:i,h:L.h});
+    // precip in the hours ending at this step counts for the day the middle of them falls in
+    const x=d.qpf&&d.qpf[i]||0, q=by[local(ms-(i?(s-d.steps[i-1])/2:0)*3600e3).key];
+    if(x>0&&q){q.q+=x;const t=d.ptype&&d.ptype[i]?d.ptype[i]:1;q.typ[t]=(q.typ[t]||0)+x;q.snow+=d.snow&&d.snow[i]||0}});
+  // start with the first day the run covers from the morning on
+  const first=days.length&&days[0].pts[0].h>10?1:0;
+  return days.slice(first,first+want).map(D=>{
+    const v=a=>a?D.pts.map(p=>a[p.i]).filter(x=>x!=null):[], t=v(d.t), td=v(d.td), ws=v(d.ws);
+    const daytime=D.pts.filter(p=>p.h>=7&&p.h<=19);    // sky: daytime average
+    const sky=d.sky?(daytime.length?daytime:D.pts).map(p=>d.sky[p.i]).filter(x=>x!=null):[];
+    let whi=null, wdir='';D.pts.forEach(p=>{const w=d.ws&&d.ws[p.i];if(w!=null&&(whi==null||w>whi)){whi=w;wdir=d.wd?d.wd[p.i]:''}});
+    const type=+(Object.keys(D.typ).sort((a,b)=>D.typ[b]-D.typ[a])[0]||1);
+    return Object.assign(D,{hi:t.length?Math.max(...t):null, lo:t.length?Math.min(...t):null,
+      dlo:td.length?Math.min(...td):null, dhi:td.length?Math.max(...td):null,
+      wlo:ws.length?Math.min(...ws):null, whi:whi, wdir:wdir, type:type,
+      sky:sky.length?sky.reduce((a,b)=>a+b,0)/sky.length:null,
+      partial:D.pts[0].h>4||D.pts[D.pts.length-1].h<20});
+  });
+}
+function drawForecast(){
+  const d=fc.data, U=d.units, metric=U.p==='mm', COL=96, r=d.run, init=new Date(r.init).getTime();
+  const deg=x=>x==null?'–':Math.round(x)+'°', rng=(a,b,u)=>a==null?'–':Math.round(a)===Math.round(b)?Math.round(b)+u:Math.round(a)+'–'+Math.round(b)+u;
+  const days=forecastDays(d);
+  let near='',best=1e9;    // nearest labeled town
+  cities.forEach(c=>{const km=Math.hypot(c[1]-d.lat,(c[2]-d.lon)*Math.cos(d.lat*Math.PI/180))*111.2;if(km<best){best=km;near=c[0]}});
+  near=best<2?esc(near):best<12?'near '+esc(near):'';
+  const elev=M.units==='metric'?Math.round(d.elev_m)+' m':Math.round(d.elev_m*3.281).toLocaleString('en-US')+' ft';
+  const k=st.k;let when='';try{when=new Date(init+d.steps[k]*3600e3).toLocaleString('en-US',{timeZone:M.tz,weekday:'short',hour:'numeric'})}catch(e){}
+  const PT={1:'rain',2:'snow',3:'mix',4:'freezing rain'};
+  const now=[d.t[k]!=null?Math.round(d.t[k])+U.t:'', d.td[k]!=null?'dew point '+Math.round(d.td[k])+U.t:'',
+    d.ws&&d.ws[k]!=null?'wind '+(d.wd&&Math.round(d.ws[k])>0?d.wd[k]+' ':'')+Math.round(d.ws[k])+' '+U.w:'',
+    d.sky&&d.sky[k]!=null?Math.round(d.sky[k])+'% cloud':'',
+    d.qpf&&d.qpf[k]>0?d.qpf[k].toFixed(metric?1:2)+' '+U.p+(d.ptype&&PT[d.ptype[k]]?' '+PT[d.ptype[k]]:''):''].filter(Boolean).join(' · ');
+  let h='<div class="hd"><div><b>'+days.length+'-day forecast'+(near?' · '+near:'')+'</b><div class="sub">'+d.lat.toFixed(2)+', '+d.lon.toFixed(2)+
+    ' · '+elev+' · '+esc(r.label)+'</div></div><button class="x" title="Close (Esc)">&times;</button></div>'+
+    '<div class="now"><span class="k">F'+pad(d.steps[k])+' '+when+':</span> '+now+'</div><div class="sc"><div class="days">';
+  days.forEach(D=>{const c=condition(D.sky,D.q,D.type,metric);
+    const wind=D.whi==null?'–':(Math.round(D.whi)>0&&D.wdir?D.wdir+' ':'')+rng(D.wlo,D.whi,' '+U.w);
+    const pr=D.q>=(metric?0.1:0.01)?D.q.toFixed(metric?1:2)+' '+U.p+(D.snow>=(metric?0.5:0.1)?', '+D.snow.toFixed(1)+' '+U.s+' snow':''):'';
+    h+='<div class="day"'+(D.partial?' title="The run covers only part of this day"':'')+'><div class="dn">'+D.wd+'</div><div class="dd">'+D.md+(D.partial?'*':'')+'</div>'+
+      icon(c[1])+'<div class="cond">'+c[0]+'</div><div class="hl"><span class="hi">'+deg(D.hi)+'</span> <span class="k">/</span> <span class="lo">'+deg(D.lo)+'</span></div>'+
+      '<div class="row"><span class="k">Dew</span> '+rng(D.dlo,D.dhi,'°')+'</div><div class="row">'+wind+'</div>'+
+      '<div class="row" style="color:#2f7bd9;min-height:1.45em">'+pr+'</div></div>'});
+  h+='</div>'+forecastChart(d,days,COL)+'</div><div class="key"><i style="background:#d9302a"></i>temperature<i style="background:#2f9e44"></i>dew point'+
+    '<i style="background:#2f7bd9;height:8px;width:6px"></i>precip<i style="background:#8a94a6;height:8px;opacity:.6"></i>cloud cover'+
+    ' · click the chart to show that hour on the map'+(days.some(D=>D.partial)?' · * part of the day only':'')+'</div>';
+  const P=$('fc'); P.innerHTML=h; P.querySelector('.x').onclick=closeForecast;
+  const svg=P.querySelector('.chart');
+  if(svg)svg.onclick=e=>{const x=e.clientX-svg.getBoundingClientRect().left;let bi=-1,bd=1e9;
+    fc.x.forEach((px,i)=>{if(px!=null&&Math.abs(px-x)<bd){bd=Math.abs(px-x);bi=i}});if(bi>=0){st.k=bi;show()}};
+}
+function forecastChart(d,days,COL){
+  const W=days.length*COL, H=104, top=14, bot=H-4, init=new Date(d.run.init).getTime(), di={};
+  days.forEach((D,j)=>di[D.key]=j);
+  // x of each step inside the shown days, by the local clock so it lines up with the columns
+  const X=fc.x=d.steps.map(s=>{const L=local(init+s*3600e3);return L.key in di?(di[L.key]+L.h/24)*COL:null});
+  const idx=X.map((x,i)=>x==null?-1:i).filter(i=>i>=0); if(idx.length<2)return '';
+  const vals=idx.flatMap(i=>[d.t[i],d.td[i]]).filter(v=>v!=null);
+  const lo=Math.floor(Math.min(...vals)-2), hi=Math.ceil(Math.max(...vals)+2), Y=v=>top+(hi-v)/(hi-lo)*(bot-top-12);
+  let g='';
+  days.forEach((D,j)=>{if(j)g+='<line x1="'+j*COL+'" x2="'+j*COL+'" y1="0" y2="'+H+'" stroke="#dfe2e7"/>';
+    g+='<line x1="'+(j+0.5)*COL+'" x2="'+(j+0.5)*COL+'" y1="'+top+'" y2="'+bot+'" stroke="#eef0f3"/>'});
+  // cloud cover: a band along the top, darker = cloudier
+  if(d.sky)idx.forEach((i,n)=>{if(d.sky[i]==null)return;
+    const x0=n?(X[idx[n-1]]+X[i])/2:Math.max(0,X[i]-COL/16), x1=n<idx.length-1?(X[i]+X[idx[n+1]])/2:Math.min(W,X[i]+COL/16);
+    g+='<rect x="'+x0.toFixed(1)+'" y="1" width="'+(x1-x0).toFixed(1)+'" height="9" fill="#8a94a6" fill-opacity="'+(0.06+0.8*d.sky[i]/100).toFixed(2)+'"/>'});
+  const qmax=Math.max(M.units==='metric'?2.5:0.1,...idx.map(i=>d.qpf&&d.qpf[i]||0));
+  idx.forEach(i=>{const q=d.qpf&&d.qpf[i];if(q>0){const h=Math.max(1,q/qmax*28);
+    g+='<rect x="'+(X[i]-2.5).toFixed(1)+'" y="'+(bot-h).toFixed(1)+'" width="5" height="'+h.toFixed(1)+'" fill="'+(d.ptype&&d.ptype[i]===2?'#7aa7d9':'#2f7bd9')+'"/>'}});
+  const line=(a,c)=>'<polyline fill="none" stroke="'+c+'" stroke-width="2" stroke-linejoin="round" points="'+
+    idx.filter(i=>a[i]!=null).map(i=>X[i].toFixed(1)+','+Y(a[i]).toFixed(1)).join(' ')+'"/>';
+  g+=line(d.td,'#2f9e44')+line(d.t,'#d9302a');
+  g+='<text x="'+(W-3)+'" y="'+(Y(hi)+9)+'" font-size="10" fill="#777" text-anchor="end">'+hi+'°</text>'+
+    '<text x="'+(W-3)+'" y="'+(Y(lo)-2)+'" font-size="10" fill="#777" text-anchor="end">'+lo+'°</text>';
+  if(X[st.k]!=null)g+='<line x1="'+X[st.k].toFixed(1)+'" x2="'+X[st.k].toFixed(1)+'" y1="0" y2="'+H+'" stroke="#1f5fbf" stroke-width="1.5" stroke-dasharray="3,2"/>';
+  return '<svg class="chart" width="'+W+'" height="'+H+'" style="background:#fafbfc;border-radius:4px">'+g+'</svg>';
+}
+// ---- capture: the map as it is now, with a header (product, valid time, model run) and the
+// legend; or a range of hours as an MP4 (WebCodecs) or GIF, each frame shown for the chosen time
+const GIFENC='https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm', MP4MUX='https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/+esm';
+function rendered(){return new Promise(r=>{map.once('idle',()=>r());map.triggerRepaint()})}
+function fmtTime(ms,o){try{return new Date(ms).toLocaleString('en-US',Object.assign({timeZone:M.tz},o))}catch(e){return new Date(ms).toUTCString()}}
+function stampText(k){
+  const r=run(), P=M.products[st.prod], s=ST[st.prod], init=new Date(r.init).getTime(), h=r.steps[k], vt=init+h*3600e3;
+  const n=k?h-r.steps[k-1]:(r.steps[1]-r.steps[0])||3;
+  return {title:P.title.replace('{n}',n)+' ('+s.unit+')',
+    valid:'Valid '+fmtTime(vt,{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',timeZoneName:'short'})+
+      '  ('+new Date(vt).toISOString().slice(11,13)+'Z)  ·  F'+pad(h),
+    run:'ICON '+new Date(init).toISOString().slice(11,13)+'Z '+fmtTime(init,{timeZone:'UTC',weekday:'short',month:'short',day:'numeric',year:'numeric'})+' run',
+    res:'ICON-MOS · '+M.domain+' · '+(r.res==='13km'?'13 km':r.res.replace('km',' km'))};
+}
+function drawLegend(x,cx,cy,maxW){   // the on-screen legend, drawn onto a canvas; returns its box
+  const s=ST[st.prod], P=M.products[st.prod], pad=8, font='system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  const fmt=v=>s.discrete&&v<1?String(v).replace(/^0/,''):String(v);
+  const bar=(lut,lev,bx,by,w)=>{const n=lev.length-1;for(let i=0;i<n;i++){const c=lut[i];x.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(c[3]/255)+')';
+    x.fillRect(bx+Math.floor(i*w/n),by,Math.ceil(w/n)+1,12)}};
+  const ticks=(lev,tk,bx,by,w)=>{const n=lev.length-1;x.font='10px '+font;x.fillStyle='#1c2230';x.textAlign='center';
+    tk.forEach(t=>{let i=lev.indexOf(t);if(i<0)i=(t-lev[0])/(lev[n]-lev[0])*n;x.fillText(fmt(t),bx+i/n*w,by+10)});x.textAlign='left'};
+  const title=P.title.replace('{n}-h ','')+' ('+s.unit+')';
+  let W,H;
+  if(s.kind==='ptype'){const bw=Math.min(130,(maxW-2*pad-36)/4);W=4*bw+36+2*pad;H=62}else{W=Math.min(420,maxW-2*pad)+2*pad;H=52}
+  const y0=cy-H;
+  x.fillStyle='rgba(255,255,255,.93)';x.beginPath();x.roundRect?x.roundRect(cx,y0,W,H,6):x.rect(cx,y0,W,H);x.fill();
+  x.fillStyle='#1c2230';x.font='600 12px '+font;x.textBaseline='alphabetic';x.fillText(title,cx+pad,y0+17,W-2*pad);
+  if(s.kind==='ptype'){const n=s.levels.length,bw=(W-2*pad-36)/4;
+    s.types.forEach((t,k)=>{const bx=cx+pad+k*(bw+12);x.font='11px '+font;x.fillStyle='#1c2230';x.fillText(t,bx,y0+31);
+      rampBar(x,s.ramps[k],s.levels,bx,y0+35,bw,12);ticks(s.levels,s.levels.filter((_,i)=>i%2===0),bx,y0+48,bw)})}
+  else{const w=W-2*pad;bar(s.lut.slice(1,-1),s.levels,cx+pad,y0+24,w);ticks(s.levels,s.ticks,cx+pad,y0+37,w)}
+}
+// the map canvas (WebGL, kept with preserveDrawingBuffer) + header + legend + attribution
+function compose(maxW){
+  const mc=map.getCanvas(), cw=mc.clientWidth, ch=mc.clientHeight, head=50;
+  let sc=mc.width/cw; if(maxW&&cw*sc>maxW)sc=maxW/cw;
+  const W=Math.round(cw*sc)&~1, H=Math.round((ch+head)*sc)&~1;
+  const out=document.createElement('canvas'); out.width=W; out.height=H;
+  const x=out.getContext('2d'), T=stampText(st.k), font='system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  x.setTransform(W/cw,0,0,H/(ch+head),0,0);
+  x.fillStyle='#fff';x.fillRect(0,0,cw,head);
+  x.drawImage(mc,0,head,cw,ch);
+  if(particles.canvas.width)x.drawImage(particles.canvas,0,head,cw,ch);     // wind particles, as they are now
+  x.fillStyle='#d5d9e0';x.fillRect(0,head-1,cw,1);
+  x.fillStyle='#1c2230';x.font='700 15px '+font;x.fillText(T.title,10,20,cw*0.62);
+  x.font='13px '+font;x.fillStyle='#1c2230';x.fillText(T.valid,10,40,cw*0.62);
+  x.textAlign='right';x.font='600 13px '+font;x.fillText(T.run,cw-10,20,cw*0.36);
+  x.font='12px '+font;x.fillStyle='#5b6474';x.fillText(T.res,cw-10,40,cw*0.36);x.textAlign='left';
+  drawLegend(x,10,head+ch-10,cw-20);
+  x.font='10px '+font;x.textAlign='right';x.fillStyle='rgba(255,255,255,.8)';
+  const attr='© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors';x.fillRect(cw-x.measureText(attr).width-10,head+ch-15,x.measureText(attr).width+10,15);
+  x.fillStyle='#333';x.fillText(attr,cw-5,head+ch-4);x.textAlign='left';
+  return out;
+}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000)}
+const fileBase=()=>'ICON-MOS_'+st.prod+'_'+st.run;
+const capMsg=t=>{$('cap_msg').textContent=t};
+async function screenshot(){
+  if(st.rec)return; play(false); capMsg('Capturing…');
+  try{await show();await rendered();const c=compose(0);
+    c.toBlob(b=>{download(b,fileBase()+'_F'+pad(run().steps[st.k])+'.png');capMsg('Saved '+c.width+' × '+c.height+' PNG')},'image/png');}
+  catch(e){capMsg('Could not capture: '+e.message)}
+}
+function fillCapture(){
+  const r=run(), opts=r.steps.map((h,i)=>'<option value="'+i+'">F'+pad(h)+'</option>').join('');
+  const a=Math.min(+$('cap_a').value||0,r.steps.length-1), b=+$('cap_b').value;
+  $('cap_a').innerHTML=opts;$('cap_b').innerHTML=opts;
+  $('cap_a').value=a;$('cap_b').value=b&&b<r.steps.length?b:Math.min(a+8,r.steps.length-1);
+}
+async function mp4Writer(W,H,ms){
+  if(!window.VideoEncoder)throw new Error('MP4 needs a browser with WebCodecs (Chrome, Edge, Safari 16.4+, Firefox 130+); try GIF');
+  const {Muxer,ArrayBufferTarget}=await import(MP4MUX);
+  let cfg=null;
+  for(const codec of ['avc1.640034','avc1.640033','avc1.640028','avc1.4d0034','avc1.42003e']){
+    const c={codec,width:W,height:H,bitrate:Math.max(2e6,Math.round(W*H*4)),framerate:Math.max(1,1000/ms)};
+    try{if((await VideoEncoder.isConfigSupported(c)).supported){cfg=c;break}}catch(e){}}
+  if(!cfg)throw new Error('this browser can\'t encode H.264 at '+W+' × '+H+'; try GIF');
+  const target=new ArrayBufferTarget(), mux=new Muxer({target,video:{codec:'avc',width:W,height:H},fastStart:'in-memory'});
+  let err=null; const enc=new VideoEncoder({output:(c,m)=>mux.addVideoChunk(c,m),error:e=>{err=e}});
+  enc.configure(cfg); let n=0;
+  return {add(cv){if(err)throw err;const f=new VideoFrame(cv,{timestamp:n*ms*1000,duration:ms*1000});enc.encode(f,{keyFrame:n%30===0});f.close();n++},
+    async finish(){await enc.flush();if(err)throw err;enc.close();mux.finalize();return new Blob([target.buffer],{type:'video/mp4'})}};
+}
+async function gifWriter(W,H,ms){
+  const {GIFEncoder,quantize,applyPalette}=await import(GIFENC), gif=GIFEncoder();
+  return {add(cv){const d=cv.getContext('2d').getImageData(0,0,W,H).data, pal=quantize(d,256);
+      gif.writeFrame(applyPalette(d,pal),W,H,{palette:pal,delay:ms})},
+    async finish(){gif.finish();return new Blob([gif.bytes()],{type:'image/gif'})}};
+}
+async function record(){
+  if(st.rec)return;
+  let a=+$('cap_a').value, b=+$('cap_b').value; if(b<a)[a,b]=[b,a];
+  const ms=Math.max(20,Math.min(60000,+$('cap_ms').value||500)), fmt=$('cap_fmt').value, keep=st.k, r=run();
+  play(false); st.rec=true; $('rec').disabled=$('shot').disabled=true; $('shield').hidden=false;
+  try{
+    st.k=a; await show(); await rendered();
+    let c=compose(fmt==='gif'?1000:1920); const W=c.width, H=c.height;
+    capMsg('Loading the encoder…');
+    const out=fmt==='gif'?await gifWriter(W,H,ms):await mp4Writer(W,H,ms);
+    for(let k=a;k<=b;k++){
+      capMsg('Frame '+(k-a+1)+' of '+(b-a+1)+'…');
+      if(k>a){st.k=k;await show();await rendered();c=compose(W)}
+      out.add(c); await new Promise(r=>setTimeout(r,0));
+    }
+    capMsg('Encoding…'); const blob=await out.finish();
+    download(blob,fileBase()+'_F'+pad(r.steps[a])+'-F'+pad(r.steps[b])+'.'+fmt);
+    capMsg('Saved '+(b-a+1)+' frames, '+W+' × '+H+', '+(blob.size/1048576).toFixed(1)+' MB '+fmt.toUpperCase());
+  }catch(e){capMsg('Could not record: '+e.message)}
+  finally{st.rec=false;$('rec').disabled=$('shot').disabled=false;$('shield').hidden=true;st.k=keep;show()}
+}
+$('shot').onclick=screenshot; $('rec').onclick=record;
+// ---- controls
+function step(dd){if(st.rec)return;const n=run().steps.length;st.k=(st.k+dd+n)%n;show();}
+function play(on){clearTimeout(st.timer);st.timer=null;$('play').textContent='Play';
+  if(on){$('play').textContent='Pause';const tick=async()=>{const t0=Date.now();step(1);
+      try{await frame(st.prod,run().steps[st.k])}catch(e){} st.timer=setTimeout(tick,Math.max(0,450-(Date.now()-t0)))};
+    st.timer=setTimeout(tick,0);}
+  applyOpts();}
+$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('play').onclick=()=>play(!st.timer);
+$('slider').oninput=e=>{if(st.rec){e.target.value=st.k;return}st.k=+e.target.value;show();};
+document.addEventListener('keydown',e=>{
+  if(['SELECT','INPUT'].includes(e.target.tagName)||st.rec)return;
+  if(e.key==='Escape'&&!$('fc').hidden){closeForecast();e.preventDefault();return}
+  if(e.key==='ArrowRight'){step(1);e.preventDefault();}
+  else if(e.key==='ArrowLeft'){step(-1);e.preventDefault();}
+  else if(e.key===' '){play(!st.timer);e.preventDefault();}
+  else if(e.key==='ArrowUp'||e.key==='ArrowDown'){const ps=ordered();let i=ps.indexOf(st.prod)+(e.key==='ArrowDown'?1:-1);setProd(ps[(i+ps.length)%ps.length]);e.preventDefault();}
+});
+function selectRun(id){
+  if(st.rec){$('run').value=st.run;return}
+  st.run=id;$('run').value=id;play(false);store('maprun',id);
+  if(!meta().products.includes(st.prod))st.prod=meta().products[0];
+  st.k=Math.min(st.k,run().steps.length-1); geo.det=null; geo.overDone=null; st.v=null;
+  if(ready)map.setLayoutProperty('detail','visibility','none');
+  drawProducts();drawHours();legend();applyOpts();fillCapture();show().then(detail);
+  if(fc.data)openForecast(fc.at);     // same spot, new run
+}
+$('run').onchange=()=>selectRun($('run').value);
+const want=recall('maprun'); selectRun(RUNS.some(r=>r.id===want)?want:RUNS[0].id);
+})();
+</script>
+</body></html>
